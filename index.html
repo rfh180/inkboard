@@ -1,0 +1,1965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="InkBoard">
+<meta name="format-detection" content="telephone=no">
+<title>InkBoard</title>
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+  :root { --bg: #fff; --fg: #000; --dim: #5a5a5a; --faint: #d0d0d0; --line: #000; --shade: #f1f1f1; }
+  body.night { --bg: #000; --fg: #fff; --dim: #a8a8a8; --faint: #3a3a3a; --line: #fff; --shade: #161616; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: rgba(0,0,0,0); }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--fg); }
+  body { font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; -webkit-text-size-adjust: 100%;
+         -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+  input, select, textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; -webkit-appearance: none; }
+  [data-act], [data-hold] { cursor: pointer; }
+  .hide { display: none !important; }
+
+  /* ---------- frame ---------- */
+  #app { position: absolute; left: 0; top: 0; right: 0; height: 100%; display: -webkit-flex; display: flex;
+         -webkit-flex-direction: column; flex-direction: column; padding: 12px 14px 8px; }
+  #hdr { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; border-bottom: 3px solid var(--line);
+         padding: 0 2px 8px; margin-bottom: 10px; min-height: 40px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  #hdr .nm { font-weight: 800; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; margin-right: 14px; }
+  #hdr .cds { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; -webkit-justify-content: center; justify-content: center; overflow: hidden; }
+  #hdr .cd { border: 2px solid var(--line); border-radius: 18px; padding: 3px 12px; font-size: 16px; font-weight: 700; margin: 0 4px; white-space: nowrap; }
+  #hdr .cd b { font-weight: 800; }
+  #hdr .cd.today { background: var(--fg); color: var(--bg); }
+  #hdr .tm { font-size: 22px; font-weight: 800; white-space: nowrap; margin-left: 14px; font-variant-numeric: tabular-nums; }
+  #hdr .tm small { font-size: 14px; margin-left: 2px; }
+
+  #pager { -webkit-flex: 1; flex: 1; position: relative; overflow: hidden; min-height: 0; }
+  #track { position: absolute; left: 0; top: 0; bottom: 0; display: -webkit-flex; display: flex; -webkit-transition: -webkit-transform .3s ease; transition: transform .3s ease; }
+  #track.drag { -webkit-transition: none; transition: none; }
+  .page { height: 100%; overflow: hidden; position: relative; }
+  .page > .inner { height: 100%; }
+
+  #bar { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; border-top: 3px solid var(--line);
+         padding-top: 8px; margin-top: 10px; min-height: 52px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  #bar .side { width: 30%; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+  #bar .side.r { -webkit-justify-content: flex-end; justify-content: flex-end; }
+  #bar .upd { color: var(--dim); font-size: 14px; margin-right: 12px; white-space: nowrap; }
+  #bar .upd.off { color: var(--fg); font-weight: 700; }
+  #dots { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; -webkit-justify-content: center; justify-content: center;
+          -webkit-align-items: center; align-items: center; height: 44px; position: relative; }
+  #dots .dot { width: 44px; height: 44px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+  #dots .dot i { display: block; width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--fg); }
+  #dots .dot.on i { background: var(--fg); }
+  #dots .holdbar { position: absolute; left: 50%; bottom: -2px; height: 4px; width: 0; background: var(--fg); -webkit-transform: translateX(-50%); transform: translateX(-50%); }
+  #dots .holdtip { position: absolute; bottom: 46px; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); background: var(--fg); color: var(--bg);
+                   padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 700; white-space: nowrap; }
+  .btn { display: inline-block; border: 2px solid var(--line); border-radius: 8px; padding: 8px 16px; font-weight: 700; font-size: 17px; line-height: 1.2; white-space: nowrap; }
+  .btn.sm { padding: 5px 11px; font-size: 15px; }
+  .btn.pri { background: var(--fg); color: var(--bg); }
+  .btn.warn { border-style: dashed; }
+  .btn:active, .btn.pressed { background: var(--fg); color: var(--bg); }
+  .btn.pri:active { background: var(--bg); color: var(--fg); }
+
+  /* ---------- layout pieces ---------- */
+  .row { display: -webkit-flex; display: flex; height: 100%; }
+  .colm { display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; min-width: 0; min-height: 0; }
+  .colm + .colm { margin-left: 14px; }
+  .grow { -webkit-flex: 1; flex: 1; min-height: 0; }
+  .panel { border: 3px solid var(--line); border-radius: 10px; overflow: hidden; display: -webkit-flex; display: flex;
+           -webkit-flex-direction: column; flex-direction: column; min-height: 0; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .panel + .panel, .clock + .panel { margin-top: 12px; }
+  .panel.grow { -webkit-flex: 1; flex: 1; -webkit-flex-shrink: 1; flex-shrink: 1; }
+  .tbar { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; background: var(--fg); color: var(--bg);
+          padding: 6px 8px 6px 12px; font-size: 16px; min-height: 42px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .tbar b { text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tbar .sub { -webkit-flex: 1; flex: 1; margin-left: 10px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tbar .add { border: 2px solid var(--bg); border-radius: 7px; padding: 4px 12px; font-weight: 700; margin-left: 8px; white-space: nowrap; }
+  .tbar .add:active { background: var(--bg); color: var(--fg); }
+  .pbody { padding: 8px 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; -webkit-flex: 1; flex: 1; }
+  .muted { color: var(--dim); }
+  .none { color: var(--dim); font-size: 16px; padding: 6px 0; }
+  .warn { border: 2px dashed var(--line); border-radius: 6px; padding: 5px 10px; margin-bottom: 8px; font-weight: 700; font-size: 15px; }
+  .hint { border: 2px dashed var(--faint); border-radius: 10px; padding: 18px; color: var(--dim); font-size: 17px; text-align: center; margin: 10px 0; }
+
+  /* clock */
+  .clock { -webkit-flex-shrink: 0; flex-shrink: 0; padding: 0 2px; }
+  .clock .t { font-size: 92px; font-weight: 800; line-height: .95; letter-spacing: -3px; font-variant-numeric: tabular-nums; }
+  .clock .t small { font-size: 30px; letter-spacing: 0; margin-left: 6px; font-weight: 700; }
+  .clock .d { font-size: 23px; font-weight: 600; margin-top: 6px; }
+  .clock.sm .t { font-size: 56px; letter-spacing: -2px; } .clock.sm .t small { font-size: 22px; } .clock.sm .d { font-size: 19px; }
+
+  /* agenda */
+  .day { margin-bottom: 10px; }
+  .day h3 { margin: 0 0 3px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid var(--line); padding-bottom: 3px; }
+  .day.today h3 { font-size: 17px; }
+  .ev { display: -webkit-flex; display: flex; -webkit-align-items: baseline; align-items: baseline; padding: 6px 0; font-size: 19px; }
+  .ev .t { width: 86px; -webkit-flex-shrink: 0; flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ev .t small { font-size: 13px; font-weight: 600; margin-left: 1px; }
+  .ev .m { width: 20px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .ev .x { -webkit-flex: 1; flex: 1; min-width: 0; }
+  .ev .loc { display: block; font-size: 14px; color: var(--dim); }
+  .ev.past { opacity: .45; }
+  .ev.now .x { font-weight: 800; }
+  .ev .cdmark { font-size: 12px; font-weight: 800; border: 2px solid var(--fg); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; }
+  .mk { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--fg); vertical-align: 0; }
+  .mk0 { background: var(--fg); border-radius: 50%; } .mk1 { border-radius: 50%; } .mk2 { background: var(--fg); } .mk3 { }
+  .mk4 { background: var(--fg); -webkit-transform: rotate(45deg) scale(.85); transform: rotate(45deg) scale(.85); }
+  .mk5 { -webkit-transform: rotate(45deg) scale(.85); transform: rotate(45deg) scale(.85); }
+  .key { font-size: 14px; color: var(--dim); padding: 6px 2px 0; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .key span { margin-right: 14px; white-space: nowrap; } .key .mk { margin-right: 5px; }
+
+  /* tasks */
+  .task { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 9px 0; font-size: 20px; border-bottom: 1px solid var(--faint); }
+  .task:last-child { border-bottom: 0; }
+  .task .bx { width: 30px; height: 30px; border: 3px solid var(--fg); border-radius: 6px; margin-right: 12px; -webkit-flex-shrink: 0; flex-shrink: 0; position: relative; }
+  .task.done .bx { background: var(--fg); }
+  .task.done .bx:after { content: ""; position: absolute; left: 8px; top: 2px; width: 7px; height: 14px; border: solid var(--bg); border-width: 0 3px 3px 0;
+                         -webkit-transform: rotate(45deg); transform: rotate(45deg); }
+  .task .tt { -webkit-flex: 1; flex: 1; min-width: 0; word-wrap: break-word; }
+  .task.done .tt { text-decoration: line-through; color: var(--dim); }
+  .task .due { font-size: 13px; font-weight: 700; border: 2px solid var(--fg); border-radius: 4px; padding: 0 5px; margin-left: 8px; white-space: nowrap; }
+  .task .due.late { background: var(--fg); color: var(--bg); }
+  .task.busy { opacity: .5; }
+  .task.held { background: var(--shade); }
+
+  /* weather */
+  .wx { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+  .wx .ic { width: 60px; height: 60px; margin-right: 10px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .wx .tmp { font-size: 54px; font-weight: 800; line-height: 1; }
+  .wx .tx { font-size: 17px; font-weight: 600; margin-left: 12px; }
+  .wxd { display: -webkit-flex; display: flex; margin-top: 8px; border-top: 2px solid var(--line); padding-top: 6px; }
+  .wxd > div { -webkit-flex: 1; flex: 1; text-align: center; font-size: 15px; }
+  .wxd b { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+  .wxd svg { width: 28px; height: 28px; display: block; margin: 2px auto; }
+  svg.i { fill: none; stroke: var(--fg); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* calendar columns, week, month */
+  .cols { display: -webkit-flex; display: flex; height: 100%; }
+  .dcol { -webkit-flex: 1; flex: 1; min-width: 0; border: 3px solid var(--line); border-radius: 10px; display: -webkit-flex; display: flex;
+          -webkit-flex-direction: column; flex-direction: column; overflow: hidden; }
+  .dcol + .dcol { margin-left: 10px; }
+  .dcol .dh { background: var(--bg); border-bottom: 3px solid var(--line); padding: 6px 10px; font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; }
+  .dcol .dh span { display: block; font-size: 26px; letter-spacing: 0; }
+  .dcol.today .dh { background: var(--fg); color: var(--bg); }
+  .dcol .pbody { padding: 6px 8px; }
+  .cev { border-left: 4px solid var(--fg); padding: 3px 0 3px 7px; margin-bottom: 8px; font-size: 16px; }
+  .cev .ct { font-weight: 800; font-size: 14px; display: block; }
+  .cev .loc { display: block; font-size: 13px; color: var(--dim); }
+  .cev.allday { border: 2px solid var(--fg); border-radius: 6px; padding: 3px 7px; font-weight: 700; }
+  .cev.past { opacity: .45; }
+  .week .dcol .dh span { font-size: 22px; }
+  .week .cev { font-size: 14px; } .week .dcol + .dcol { margin-left: 6px; } .week .dcol .pbody { padding: 5px 5px; }
+  .month { display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; height: 100%; }
+  .month .mh { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+  .mgrid { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; border: 3px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .mrow { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; min-height: 0; }
+  .mrow.hd { -webkit-flex: none; flex: none; background: var(--fg); color: var(--bg); font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+  .mrow.hd div { padding: 4px 6px; }
+  .mcell { -webkit-flex: 1; flex: 1; min-width: 0; border-right: 1px solid var(--faint); border-bottom: 1px solid var(--faint); padding: 3px 5px; overflow: hidden; font-size: 12px; }
+  .mcell .n { font-weight: 800; font-size: 15px; }
+  .mcell.other { color: var(--dim); background: var(--shade); }
+  .mcell.today .n { background: var(--fg); color: var(--bg); border-radius: 10px; padding: 0 6px; }
+  .mcell .mi { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.35; }
+
+  /* countdown cards */
+  .cards { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; height: 100%; -webkit-align-content: stretch; align-content: stretch; }
+  .card { width: calc(50% - 6px); height: calc(50% - 6px); border: 3px solid var(--line); border-radius: 14px; padding: 16px 20px; display: -webkit-flex; display: flex;
+          -webkit-flex-direction: column; flex-direction: column; -webkit-justify-content: space-between; justify-content: space-between; margin-bottom: 12px; overflow: hidden; }
+  .card:nth-child(odd) { margin-right: 12px; }
+  .card.one { width: 100%; height: 100%; margin-right: 0; }
+  .card.tall { height: 100%; margin-bottom: 0; }
+  .card .ttl { font-size: 26px; font-weight: 800; }
+  .card .dt { font-size: 17px; color: var(--dim); margin-top: 4px; }
+  .card .big { font-size: 84px; font-weight: 800; line-height: 1; letter-spacing: -2px; }
+  .card .big small { font-size: 26px; letter-spacing: 0; margin-left: 8px; }
+  .card.today { background: var(--fg); color: var(--bg); } .card.today .dt { color: var(--bg); opacity: .8; }
+
+  /* personal + family */
+  .pf { display: -webkit-flex; display: flex; height: 100%; }
+  .pf .side { -webkit-flex: 1; flex: 1; min-width: 0; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
+  .pf .side + .side { margin-left: 14px; padding-left: 14px; border-left: 3px solid var(--line); }
+  .pf .who { font-size: 30px; font-weight: 800; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* night clock */
+  .nclock { height: 100%; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-justify-content: center; justify-content: center; text-align: center; }
+  .nclock .t { font-size: 200px; font-weight: 800; line-height: .9; letter-spacing: -8px; font-variant-numeric: tabular-nums; }
+  .nclock .t small { font-size: 50px; letter-spacing: 0; margin-left: 10px; }
+  .nclock .d { font-size: 38px; font-weight: 700; margin-top: 14px; }
+  .nclock .nx { font-size: 26px; margin-top: 26px; color: var(--dim); }
+  .nclock .nx b { color: var(--fg); }
+
+  /* photos */
+  .pframe { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: #000; overflow: hidden; }
+  .pframe canvas { position: absolute; left: 50%; top: 50%; image-rendering: -webkit-optimize-contrast; image-rendering: pixelated; image-rendering: crisp-edges; }
+  .pframe .corner { position: absolute; right: 18px; bottom: 18px; background: #fff; color: #000; border: 3px solid #000; border-radius: 10px; padding: 8px 14px; font-size: 20px; font-weight: 700; max-width: 70%; }
+  .pframe .corner b { font-size: 30px; display: block; }
+
+  /* ---------- overlays ---------- */
+  .scrim { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,.45); z-index: 20; }
+  #sheet .card2 { position: absolute; left: 50%; top: 40px; width: 600px; max-width: 94%; max-height: calc(100% - 60px); -webkit-transform: translateX(-50%); transform: translateX(-50%);
+                  background: var(--bg); color: var(--fg); border: 3px solid var(--line); border-radius: 14px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; overflow: hidden; }
+  #sheet .sh { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 12px 16px; border-bottom: 3px solid var(--line); }
+  #sheet .sh h2 { margin: 0; font-size: 22px; -webkit-flex: 1; flex: 1; min-width: 0; }
+  #sheet .sb { padding: 14px 16px 18px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  #sheet .sf { padding: 12px 16px; border-top: 2px solid var(--faint); text-align: right; }
+  #sheet .sf .btn { margin-left: 8px; }
+  #sheet .sf .left { float: left; margin-left: 0; }
+  .fld { margin-bottom: 14px; }
+  .fld > label, .lbl { display: block; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+  .inp { width: 100%; font-size: 19px; padding: 9px 11px; border: 3px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); -webkit-appearance: none; border-radius: 8px; font-family: inherit; }
+  select.inp { background-image: none; }
+  .two { display: -webkit-flex; display: flex; } .two > * { -webkit-flex: 1; flex: 1; min-width: 0; } .two > * + * { margin-left: 10px; }
+  .chk { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; font-size: 19px; padding: 6px 0; }
+  .chk .bx { width: 30px; height: 30px; border: 3px solid var(--fg); border-radius: 6px; margin-right: 12px; position: relative; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .chk.on .bx { background: var(--fg); }
+  .chk.on .bx:after { content: ""; position: absolute; left: 8px; top: 2px; width: 7px; height: 14px; border: solid var(--bg); border-width: 0 3px 3px 0; -webkit-transform: rotate(45deg); transform: rotate(45deg); }
+  .sw { display: inline-block; width: 58px; height: 32px; border: 3px solid var(--fg); border-radius: 16px; position: relative; -webkit-flex-shrink: 0; flex-shrink: 0; vertical-align: middle; }
+  .sw:after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--fg); -webkit-transition: left .15s; transition: left .15s; }
+  .sw.on { background: var(--fg); } .sw.on:after { left: 29px; background: var(--bg); }
+  .info { font-size: 18px; margin-bottom: 10px; } .info .k { color: var(--dim); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; display: block; }
+  .note { font-size: 15px; color: var(--dim); border-left: 4px solid var(--faint); padding: 4px 10px; margin: 10px 0; }
+  .confirm { border: 3px dashed var(--line); border-radius: 10px; padding: 12px; margin-top: 12px; font-weight: 700; font-size: 18px; }
+  .confirm .btn { margin: 8px 8px 0 0; }
+
+  /* settings */
+  #settings { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: var(--bg); color: var(--fg); z-index: 15; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
+  #settings .st { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 12px 16px; border-bottom: 3px solid var(--line); }
+  #settings .st h1 { margin: 0; font-size: 24px; -webkit-flex: 1; flex: 1; }
+  #settings .sbody { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; min-height: 0; }
+  #settings .tabs { width: 220px; border-right: 3px solid var(--line); overflow-y: auto; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  #settings .tab { display: block; width: 100%; text-align: left; padding: 15px 16px; font-size: 18px; font-weight: 700; border-bottom: 1px solid var(--faint); }
+  #settings .tab.on { background: var(--fg); color: var(--bg); }
+  #settings .pane { -webkit-flex: 1; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 22px 40px; min-width: 0; }
+  #settings h2 { font-size: 22px; margin: 0 0 6px; }
+  #settings h3 { font-size: 15px; text-transform: uppercase; letter-spacing: 1px; margin: 22px 0 8px; border-bottom: 2px solid var(--line); padding-bottom: 4px; }
+  #settings .lead { color: var(--dim); font-size: 16px; margin: 0 0 12px; }
+  .srow { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--faint); font-size: 18px; min-height: 56px; }
+  .srow .grow { min-width: 0; }
+  .srow .grow small { display: block; color: var(--dim); font-size: 14px; }
+  .srow > * + * { margin-left: 10px; }
+  .tag { font-size: 12px; font-weight: 800; border: 2px solid var(--fg); border-radius: 4px; padding: 0 5px; text-transform: uppercase; letter-spacing: 1px; margin-left: 6px; }
+  .arrow { width: 40px; height: 40px; border: 2px solid var(--line); border-radius: 8px; font-size: 18px; font-weight: 800; }
+  .arrow[disabled] { opacity: .25; }
+  .seg { display: inline-block; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; white-space: nowrap; }
+  .seg button { padding: 8px 14px; font-weight: 700; font-size: 16px; border-left: 2px solid var(--line); }
+  .seg button:first-child { border-left: 0; }
+  .seg button.on { background: var(--fg); color: var(--bg); }
+  .thumbs { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; margin: 8px -5px; }
+  .thumb { width: 130px; height: 98px; margin: 5px; border: 2px solid var(--line); border-radius: 8px; position: relative; overflow: hidden; background: #000; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .x { position: absolute; right: 4px; top: 4px; width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #000; border: 2px solid #000; font-weight: 800; font-size: 18px; line-height: 28px; text-align: center; }
+  .pfcols { display: -webkit-flex; display: flex; } .pfcols > div { -webkit-flex: 1; flex: 1; min-width: 0; } .pfcols > div + div { margin-left: 24px; }
+  .dpreview canvas { position: absolute; left: 50%; top: 50%; image-rendering: -webkit-optimize-contrast; image-rendering: pixelated; image-rendering: crisp-edges; }
+  .dpreview { width: 260px; height: 160px; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; position: relative; background: #000; margin-top: 10px; }
+  .keypad { text-align: center; }
+  .keypad .digits { font-size: 40px; letter-spacing: 16px; margin: 10px 0 16px; min-height: 48px; }
+  .keypad .k { width: 76px; height: 64px; border: 2px solid var(--line); border-radius: 10px; font-size: 26px; font-weight: 700; margin: 5px; }
+
+  /* sleep */
+  #sleep { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 30; background: #000; }
+  #sleep.dark { background: #000; }
+  #sleep .nclock { color: #fff; }
+  #sleep .nclock .nx { color: #aaa; } #sleep .nclock .nx b { color: #fff; }
+  #sleep .addhint { position: absolute; left: 0; right: 0; bottom: 24px; text-align: center; color: #888; font-size: 18px; }
+
+  #toast { position: fixed; left: 50%; bottom: 80px; -webkit-transform: translateX(-50%); transform: translateX(-50%); background: var(--fg); color: var(--bg);
+           padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 17px; z-index: 40; max-width: 90%; text-align: center; }
+  #setup { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: #fff; color: #000; z-index: 50; overflow-y: auto; }
+  #setup .box { max-width: 560px; margin: 50px auto; padding: 0 20px; }
+  #setup h1 { font-size: 34px; margin: 0 0 6px; } #setup p { font-size: 18px; color: #444; }
+
+  /* portrait: stack instead of side by side */
+  body.portrait .row { -webkit-flex-direction: column; flex-direction: column; height: auto; }
+  body.portrait .page > .inner { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  body.portrait .colm { width: 100% !important; }
+  body.portrait .colm + .colm { margin-left: 0; margin-top: 12px; }
+  body.portrait .panel.grow { -webkit-flex: none; flex: none; }
+  body.portrait .pbody { overflow: visible; }
+  body.portrait .cols { -webkit-flex-direction: column; flex-direction: column; height: auto; }
+  body.portrait .dcol + .dcol { margin-left: 0; margin-top: 10px; }
+  body.portrait .pf { -webkit-flex-direction: column; flex-direction: column; height: auto; }
+  body.portrait .pf .side + .side { margin-left: 0; padding-left: 0; border-left: 0; border-top: 3px solid var(--line); padding-top: 12px; margin-top: 12px; }
+  body.portrait .nclock .t { font-size: 130px; }
+  body.portrait #settings .tabs { width: 150px; } body.portrait #settings .tab { font-size: 16px; padding: 13px 10px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hdr"><div class="nm" id="hName">InkBoard</div><div class="cds" id="hCds"></div><div class="tm" id="hTime"></div></div>
+  <div id="pager"><div id="track"></div></div>
+  <div id="bar">
+    <div class="side"><button class="btn" data-act="addev">+ Event</button></div>
+    <div id="dots" data-hold="settings" data-hold-ms="2000"></div>
+    <div class="side r"><span class="upd" id="upd"></span><button class="btn" data-act="sleep">Sleep</button></div>
+  </div>
+</div>
+<div id="sheet" class="scrim hide" data-act="scrim"><div class="card2" id="sheetCard" data-act="noop"></div></div>
+<div id="settings" class="hide"></div>
+<div id="sleep" class="hide" data-act="wake"></div>
+<div id="toast" class="hide"></div>
+<div id="setup" class="hide"></div>
+<input type="file" id="filePick" accept="image/*" multiple class="hide">
+<script>
+(function () {
+  // Written for old iPads: plain ES5 only (no arrow functions, let/const, template strings).
+
+  // ================================================================
+  //  SMALL HELPERS
+  // ================================================================
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function attr(el, k) { return el.getAttribute('data-' + k); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function closest(el, sel) {
+    while (el && el.nodeType === 1) {
+      if (el.matches ? el.matches(sel) : el.webkitMatchesSelector(sel)) return el;
+      el = el.parentNode;
+    }
+    return null;
+  }
+  function each(o, fn) { for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) fn(o[k], k); }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  // Dates are handled as 'YYYY-MM-DD' keys and day numbers, never parsed from text by the browser
+  // (old Safari reads some date strings wrongly).
+  function keyOf(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function dnOf(k) { var p = k.split('-'); return Math.round(Date.UTC(+p[0], +p[1] - 1, +p[2]) / 864e5); }
+  function keyFromDn(n) { var d = new Date(n * 864e5); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); }
+  function addDays(k, n) { return keyFromDn(dnOf(k) + n); }
+  function todayKey() { return keyOf(new Date()); }
+  function wdOf(k) { return new Date(dnOf(k) * 864e5).getUTCDay(); }
+  function partsOf(k) { var p = k.split('-'); return { y: +p[0], m: +p[1] - 1, d: +p[2] }; }
+  function localMs(k, hh, mm) { var p = partsOf(k); return new Date(p.y, p.m, p.d, hh || 0, mm || 0).getTime(); }
+  function timeParts(ms) {
+    var d = new Date(ms), h = d.getHours(), m = d.getMinutes();
+    return { t: (h % 12 || 12) + ':' + pad(m), a: h < 12 ? 'am' : 'pm', hh: pad(h) + ':' + pad(m) };
+  }
+  function hm(ms) { var t = timeParts(ms); return t.t + ' ' + t.a; }
+  function shortDay(k) { var p = partsOf(k); return DAYS[wdOf(k)].substr(0, 3) + ', ' + MONTHS[p.m].substr(0, 3) + ' ' + p.d; }
+  function longDay(k) { var p = partsOf(k); return DAYS[wdOf(k)] + ', ' + MONTHS[p.m] + ' ' + p.d; }
+  function dayLabel(k) {
+    var n = dnOf(k) - dnOf(todayKey());
+    if (n === 0) return 'Today';
+    if (n === 1) return 'Tomorrow';
+    var p = partsOf(k);
+    return DAYS[wdOf(k)] + ', ' + MONTHS[p.m].substr(0, 3) + ' ' + p.d;
+  }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg; t.className = '';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.className = 'hide'; }, 3500);
+  }
+
+  function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem('inkboard.' + k)); localStorage.setItem('inkboard.' + k, JSON.stringify(v)); } catch (e) { return null; } }
+
+  // ================================================================
+  //  CONNECTION (link to the Google backend + key)
+  // ================================================================
+  var IN_GAS = typeof google !== 'undefined' && google.script && google.script.run;
+  var CFG = store('cfg') || {};
+  (function readHash() {
+    var h = (location.hash || '').replace(/^#/, '');
+    if (!h) return;
+    var out = {};
+    h.split('&').forEach(function (kv) { var i = kv.indexOf('='); if (i > 0) out[kv.substr(0, i)] = decodeURIComponent(kv.substr(i + 1)); });
+    if (out.api) CFG.api = out.api;
+    if (out.k) CFG.key = out.k;
+    if (out.api || out.k) store('cfg', CFG);
+  })();
+
+  function api(action, args, ok, fail) {
+    fail = fail || function (e) { toast(e); };
+    var done = function (r) { if (r && r.ok) { if (ok) ok(r.data); } else fail(r ? r.error : 'No answer'); };
+    if (window.__MOCK_API) { setTimeout(function () { done(window.__MOCK_API(CFG.key, action, args || [])); }, 80); return; }
+    if (IN_GAS) {
+      google.script.run.withSuccessHandler(done).withFailureHandler(function () { fail('offline'); }).api(CFG.key, action, args || []);
+      return;
+    }
+    if (!CFG.api) { fail('Not connected'); return; }
+    var x = new XMLHttpRequest();
+    x.open('POST', CFG.api, true);
+    x.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+    x.timeout = 60000;
+    x.onload = function () {
+      var r = null;
+      try { r = JSON.parse(x.responseText); } catch (e) {}
+      if (r) done(r); else fail(x.status ? 'Google sent an unexpected answer (' + x.status + ')' : 'offline');
+    };
+    x.onerror = x.ontimeout = function () { fail('offline'); };
+    x.send(JSON.stringify({ key: CFG.key, action: action, args: args || [] }));
+  }
+
+  // ================================================================
+  //  STATE + LOADING
+  // ================================================================
+  var B = null;            // everything from the backend
+  var S = null;            // B.settings
+  var view = 0;
+  var online = true, loadedAt = 0, loading = false;
+  var lastInteraction = Date.now();
+  var sheetOpen = false, settingsOpen = false, sleeping = false;
+  var reloadTimer = null, pollTimer = null;
+  var POLL_MS = 3 * 60000;
+
+  function load(cb) {
+    if (loading) return;
+    loading = true;
+    api('board', [], function (d) {
+      loading = false;
+      B = d; S = d.settings; loadedAt = Date.now(); online = true;
+      store('board', d);
+      renderAll();
+      if (settingsOpen) renderSettingsSoft();
+      if (cb) cb();
+      schedulePoll(POLL_MS);
+    }, function (e) {
+      loading = false;
+      if (e === 'offline') { online = false; renderBar(); schedulePoll(60000); return; }
+      if (/key|Set your own KEY|Not connected/i.test(e)) { showSetup(e); return; }
+      online = false; renderBar(); toast(e); schedulePoll(60000);
+    });
+  }
+  function schedulePoll(ms) { clearTimeout(pollTimer); pollTimer = setTimeout(function () { load(); }, ms); }
+  function reloadSoon(ms) { clearTimeout(reloadTimer); reloadTimer = setTimeout(function () { load(); }, ms || 1500); }
+
+  // Change something now on screen, tell Google, then refresh from Google.
+  function send(action, args, undo, failMsg) {
+    renderAll();
+    api(action, args, function () { reloadSoon(); }, function (e) {
+      if (undo) undo();
+      renderAll();
+      toast(e === 'offline' ? (failMsg || 'Could not save. Check Wi-Fi and try again.') : e);
+    });
+  }
+
+  function saveSettings(patch, cb) {
+    each(patch, function (v, k) { S[k] = v; });
+    renderAll();
+    api('saveSettings', [patch], function (s) {
+      B.settings = S = s;
+      reloadSoon(600);
+      if (cb) cb();
+    }, function (e) { toast(e === 'offline' ? 'Could not save. Check Wi-Fi.' : e); });
+  }
+
+  // ================================================================
+  //  CALENDAR + TASK HELPERS
+  // ================================================================
+  function calById(id) { for (var i = 0; i < B.calendars.length; i++) if (B.calendars[i].id === id) return B.calendars[i]; return null; }
+  function shownCalIds() { var o = {}; B.calendars.forEach(function (c) { if (c.show) o[c.id] = true; }); return o; }
+  function setOf(arr) { var o = {}; (arr || []).forEach(function (x) { o[x] = true; }); return o; }
+  function markerHTML(calId) {
+    var c = calById(calId);
+    return c ? '<i class="mk mk' + (c.marker % 6) + '"></i>' : '';
+  }
+  function evDay(e) { return e.allDay ? e.startKey : keyOf(new Date(e.start)); }
+  function eventsOn(k, cals) {
+    var out = [];
+    B.events.forEach(function (e) {
+      if (!cals[e.calId]) return;
+      if (e.allDay) { if (e.startKey <= k && k < e.endKey) out.push(e); }
+      else if (keyOf(new Date(e.start)) === k) out.push(e);
+    });
+    out.sort(function (a, b) {
+      if (a.allDay !== b.allDay) return a.allDay ? -1 : 1;
+      return (a.start || 0) - (b.start || 0);
+    });
+    return out;
+  }
+  function findEvent(key) { for (var i = 0; i < B.events.length; i++) if (B.events[i].key === key) return B.events[i]; return null; }
+  function nextEvent(cals) {
+    var now = Date.now(), best = null;
+    B.events.forEach(function (e) {
+      if (!cals[e.calId] || e.allDay || e.end <= now) return;
+      if (e.start - now > 2 * 864e5) return;
+      if (!best || e.start < best.start) best = e;
+    });
+    return best;
+  }
+  function whenText(e) {
+    if (e.allDay) {
+      var last = addDays(e.endKey, -1);
+      return last > e.startKey ? shortDay(e.startKey) + ' – ' + shortDay(last) + ' · All day' : longDay(e.startKey) + ' · All day';
+    }
+    return longDay(evDay(e)) + ' · ' + hm(e.start) + ' – ' + hm(e.end);
+  }
+  function countdownOn(key) {
+    for (var i = 0; i < B.countdowns.length; i++) if (B.countdowns[i].key === key) return true;
+    return false;
+  }
+  function cdLabel(c) {
+    var n = dnOf(c.day) - dnOf(todayKey());
+    if (n <= 0) return 'Today!';
+    if (n === 1) return '1 day';
+    if (n > 99) return Math.round(n / 7) + ' wks';
+    return n + ' days';
+  }
+  function liveCountdowns() { var t = todayKey(); return (B.countdowns || []).filter(function (c) { return c.day >= t; }); }
+
+  function shownLists() { return B.lists.filter(function (l) { return l.show && B.tasks[l.id]; }); }
+  function listById(id) { for (var i = 0; i < B.lists.length; i++) if (B.lists[i].id === id) return B.lists[i]; return null; }
+  function findTask(listId, id) { var a = B.tasks[listId] || []; for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
+  function writableCals() { return B.calendars.filter(function (c) { return c.type === 'google' && c.writable; }); }
+  function defaultCalId() { var d = B.calendars.filter(function (c) { return c.isDefault; })[0]; return d ? d.id : (writableCals()[0] || {}).id; }
+
+  // ================================================================
+  //  SUNRISE / SUNSET (for night mode and waking from sleep)
+  // ================================================================
+  var sunCache = {};
+  function sunTimes(k) {
+    var ck = k + '|' + S.lat + '|' + S.lon;
+    if (sunCache[ck]) return sunCache[ck];
+    var rad = Math.PI / 180, p = partsOf(k);
+    var jd = Date.UTC(p.y, p.m, p.d, 12) / 864e5 + 2440587.5;
+    var n = Math.round(jd - 2451545 + 0.0008);
+    var js = n - S.lon / 360;
+    var M = (357.5291 + 0.98560028 * js) % 360;
+    var C = 1.9148 * Math.sin(M * rad) + 0.02 * Math.sin(2 * M * rad) + 0.0003 * Math.sin(3 * M * rad);
+    var lam = (M + C + 180 + 102.9372) % 360;
+    var jt = 2451545 + js + 0.0053 * Math.sin(M * rad) - 0.0069 * Math.sin(2 * lam * rad);
+    var dec = Math.asin(Math.sin(lam * rad) * Math.sin(23.44 * rad));
+    var cw = (Math.sin(-0.833 * rad) - Math.sin(S.lat * rad) * Math.sin(dec)) / (Math.cos(S.lat * rad) * Math.cos(dec));
+    var out;
+    if (cw > 1) out = { rise: null, set: null, allNight: true };
+    else if (cw < -1) out = { rise: null, set: null, allDay: true };
+    else {
+      var w = Math.acos(cw) / rad;
+      out = { rise: (jt - w / 360 - 2440587.5) * 864e5, set: (jt + w / 360 - 2440587.5) * 864e5 };
+    }
+    sunCache[ck] = out;
+    return out;
+  }
+  function isNight() {
+    if (!S) { var h = new Date().getHours(); return h >= 20 || h < 7; }
+    var st = sunTimes(todayKey()), now = Date.now();
+    if (st.allNight) return true;
+    if (st.allDay) return false;
+    return now < st.rise || now >= st.set;
+  }
+
+  // ================================================================
+  //  TOUCH: taps, press-and-hold, swiping between views
+  //  Every tappable thing has data-act="...". Taps are handled on touchend, so they
+  //  work on iPad Safari, and the double-tap zoom is blocked.
+  // ================================================================
+  var ACT = {}, HOLD = {};
+  var tch = null, holdTimer = null, holdFired = false, lastTouchEnd = 0, swipeUsed = false;
+
+  function isField(el) { return el && /^(INPUT|SELECT|TEXTAREA|OPTION)$/.test(el.tagName); }
+  function runAct(el) {
+    lastInteraction = Date.now();
+    var a = attr(el, 'act');
+    if (ACT[a]) ACT[a](el);
+  }
+
+  function holdBegin(el) {
+    holdFired = false;
+    var kind = attr(el, 'hold'), ms = +attr(el, 'hold-ms') || 600;
+    if (kind === 'settings') showHoldBar(ms);
+    if (kind === 'taskd') el.className += ' held';
+    holdTimer = setTimeout(function () {
+      holdFired = true;
+      holdEnd(el);
+      lastInteraction = Date.now();
+      if (HOLD[kind]) HOLD[kind](el);
+    }, ms);
+    tch.holdEl = el;
+  }
+  function holdEnd(el) {
+    clearTimeout(holdTimer);
+    hideHoldBar();
+    if (el && el.className.indexOf(' held') >= 0) el.className = el.className.replace(' held', '');
+  }
+
+  document.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1) { tch = null; return; }
+    var t = e.touches[0];
+    tch = { x: t.clientX, y: t.clientY, target: e.target, moved: false, time: Date.now() };
+    swipeUsed = false;
+    lastInteraction = Date.now();
+    var h = closest(e.target, '[data-hold]');
+    if (h) holdBegin(h);
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function (e) {
+    if (!tch) return;
+    var t = e.touches[0];
+    if (Math.abs(t.clientX - tch.x) > 10 || Math.abs(t.clientY - tch.y) > 10) {
+      tch.moved = true;
+      if (tch.holdEl) { holdEnd(tch.holdEl); tch.holdEl = null; }
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', function (e) {
+    var now = Date.now();
+    if (tch && tch.holdEl) holdEnd(tch.holdEl);
+    if (!tch) return;
+    var t = tch; tch = null;
+    if (holdFired) { holdFired = false; e.preventDefault(); lastTouchEnd = now; return; }
+    if (t.moved || swipeUsed) { lastTouchEnd = now; return; }
+    if (isField(t.target)) { lastTouchEnd = now; return; }
+    var el = closest(t.target, '[data-act]');
+    if (el) {
+      e.preventDefault();
+      if (document.activeElement && isField(document.activeElement) && !isField(el)) document.activeElement.blur();
+      lastTouchEnd = now;
+      runAct(el);
+      return;
+    }
+    if (now - lastTouchEnd < 350) e.preventDefault();   // stop double-tap zoom
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  document.addEventListener('touchcancel', function () { if (tch && tch.holdEl) holdEnd(tch.holdEl); tch = null; });
+
+  // Mouse (desktop testing)
+  var mouseHoldEl = null;
+  document.addEventListener('mousedown', function (e) {
+    if (Date.now() - lastTouchEnd < 800) return;
+    var h = closest(e.target, '[data-hold]');
+    if (h) { tch = { x: e.clientX, y: e.clientY, target: e.target }; mouseHoldEl = h; holdBegin(h); tch = null; }
+  });
+  document.addEventListener('mouseup', function () { if (mouseHoldEl) { holdEnd(mouseHoldEl); mouseHoldEl = null; } });
+  document.addEventListener('click', function (e) {
+    if (Date.now() - lastTouchEnd < 800) return;
+    if (holdFired) { holdFired = false; return; }
+    if (isField(e.target)) return;
+    var el = closest(e.target, '[data-act]');
+    if (el) { e.preventDefault(); runAct(el); }
+  });
+  document.addEventListener('keydown', function (e) {
+    lastInteraction = Date.now();
+    if (sheetOpen || settingsOpen || isField(e.target)) { if (e.keyCode === 27 && sheetOpen) closeSheet(); return; }
+    if (sleeping) { wake(); return; }
+    if (e.keyCode === 37) goView(view - 1);
+    if (e.keyCode === 39) goView(view + 1);
+  });
+
+  function showHoldBar(ms) {
+    var d = $('dots');
+    var bar = document.createElement('div'); bar.className = 'holdbar'; bar.id = 'holdbar';
+    d.appendChild(bar);
+    bar.style.webkitTransition = bar.style.transition = 'width ' + ms + 'ms linear';
+    setTimeout(function () { bar.style.width = '90%'; }, 20);
+    var tip = document.createElement('div'); tip.className = 'holdtip'; tip.id = 'holdtip'; tip.textContent = 'Keep holding for Settings';
+    setTimeout(function () { if ($('holdbar')) d.appendChild(tip); }, 300);
+  }
+  function hideHoldBar() {
+    var a = $('holdbar'), b = $('holdtip');
+    if (a) a.parentNode.removeChild(a);
+    if (b) b.parentNode.removeChild(b);
+  }
+
+  // Swiping
+  var sw = null;
+  function pagerW() { return $('pager').clientWidth; }
+  function nViews() { return (S && S.views.length) || 1; }
+  function setTrack(dx) {
+    var x = -view * pagerW() + (dx || 0);
+    $('track').style.webkitTransform = $('track').style.transform = 'translate3d(' + x + 'px,0,0)';
+  }
+  function goView(i) {
+    if (!S) return;
+    i = Math.max(0, Math.min(nViews() - 1, i));
+    if (i !== view) { view = i; }
+    $('track').className = '';
+    setTrack(0);
+    renderDots();
+  }
+  (function swipe() {
+    var p = $('pager');
+    p.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1) return;
+      sw = { x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, on: false, lock: false };
+    }, { passive: true });
+    p.addEventListener('touchmove', function (e) {
+      if (!sw) return;
+      var dx = e.touches[0].clientX - sw.x, dy = e.touches[0].clientY - sw.y;
+      if (!sw.lock) {
+        if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.2) { sw.on = true; sw.lock = true; $('track').className = 'drag'; }
+        else if (Math.abs(dy) > 12) sw.lock = true;
+      }
+      if (sw.on) {
+        e.preventDefault();
+        if ((view === 0 && dx > 0) || (view === nViews() - 1 && dx < 0)) dx = dx / 3;
+        sw.dx = dx;
+        setTrack(dx);
+      }
+    }, { passive: false });
+    p.addEventListener('touchend', function () {
+      if (!sw) return;
+      if (sw.on) {
+        swipeUsed = true;
+        var w = pagerW();
+        if (sw.dx < -w * 0.18) view = Math.min(nViews() - 1, view + 1);
+        else if (sw.dx > w * 0.18) view = Math.max(0, view - 1);
+        goView(view);
+      }
+      sw = null;
+    });
+  })();
+
+  // ================================================================
+  //  DRAWING THE BOARD
+  // ================================================================
+  function applyBodyClass() {
+    var cls = (isNight() ? 'night ' : '') + (window.innerWidth < window.innerHeight ? 'portrait' : '');
+    if (document.body.className !== cls) document.body.className = cls;
+  }
+
+  function renderHeader() {
+    $('hName').textContent = S.name || 'InkBoard';
+    document.title = S.name || 'InkBoard';
+    var html = '';
+    liveCountdowns().slice(0, 3).forEach(function (c) {
+      var lbl = cdLabel(c);
+      html += '<div class="cd' + (lbl === 'Today!' ? ' today' : '') + '" data-act="cd" data-key="' + esc(c.key) + '">' + esc(c.title) + ' · <b>' + lbl + '</b></div>';
+    });
+    $('hCds').innerHTML = html;
+    renderTime();
+  }
+  function renderTime() { var t = timeParts(Date.now()); $('hTime').innerHTML = t.t + '<small>' + t.a + '</small>'; }
+
+  function renderDots() {
+    var html = '';
+    for (var i = 0; i < nViews(); i++) html += '<div class="dot' + (i === view ? ' on' : '') + '" data-act="dot" data-i="' + i + '"><i></i></div>';
+    $('dots').innerHTML = html;
+  }
+
+  function renderBar() {
+    renderDots();
+    var u = $('upd');
+    if (!loadedAt) { u.textContent = 'Loading…'; u.className = 'upd'; return; }
+    u.textContent = (online ? 'Updated ' : 'Offline · last update ') + hm(loadedAt);
+    u.className = 'upd' + (online ? '' : ' off');
+  }
+
+  function renderPages() {
+    var track = $('track'), w = pagerW(), ids = S.views;
+    if (view >= ids.length) view = 0;
+    // keep each list's scroll position across refreshes
+    var scrolls = [];
+    var pages = track.children;
+    for (var i = 0; i < pages.length; i++) {
+      var s = [], b = pages[i].querySelectorAll('.pbody, .inner');
+      for (var j = 0; j < b.length; j++) s.push(b[j].scrollTop);
+      scrolls.push(s);
+    }
+    var html = '';
+    ids.forEach(function (id) {
+      var v = VIEWS[id] || VIEWS.combo, inner;
+      try { inner = v.render(); } catch (e) { inner = '<div class="hint">This view could not be drawn: ' + esc(e.message) + '</div>'; }
+      html += '<div class="page" style="width:' + w + 'px"><div class="inner">' + inner + '</div></div>';
+    });
+    track.style.width = (w * ids.length) + 'px';
+    track.innerHTML = html;
+    pages = track.children;
+    for (i = 0; i < pages.length && i < scrolls.length; i++) {
+      var bs = pages[i].querySelectorAll('.pbody, .inner');
+      for (j = 0; j < bs.length && j < scrolls[i].length; j++) bs[j].scrollTop = scrolls[i][j];
+    }
+    setTrack(0);
+    afterRender();
+  }
+
+  var afterRenderHooks = [];
+  function afterRender() { afterRenderHooks.forEach(function (f) { f(); }); }
+
+  function renderAll() {
+    if (!B) return;
+    applyBodyClass();
+    renderHeader();
+    renderPages();
+    renderBar();
+  }
+
+  function fitHeight() {
+    $('app').style.height = window.innerHeight + 'px';
+    applyBodyClass();
+    if (B) { renderPages(); } else setTrack(0);
+  }
+  window.addEventListener('resize', fitHeight);
+  window.addEventListener('orientationchange', function () { setTimeout(fitHeight, 350); });
+
+  // ================================================================
+  //  BUILDING BLOCKS
+  // ================================================================
+  var ICONS = {
+    sun: '<circle cx="16" cy="16" r="6"/><path d="M16 3v4M16 25v4M3 16h4M25 16h4M6.8 6.8l2.8 2.8M22.4 22.4l2.8 2.8M6.8 25.2l2.8-2.8M22.4 9.6l2.8-2.8"/>',
+    cloud: '<path d="M9 24h14a5 5 0 0 0 0-10 7 7 0 0 0-13.5 1.5A4.3 4.3 0 0 0 9 24z"/>',
+    partly: '<path d="M11 6v2M4 13h2M6 8l1.5 1.5M16 8l-1.5 1.5"/><path d="M8 15a3.5 3.5 0 0 1 6.5-2"/><path d="M11 26h12a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.5 1.3A3.9 3.9 0 0 0 11 26z"/>',
+    rain: '<path d="M9 19h14a5 5 0 0 0 0-10 7 7 0 0 0-13.5 1.5A4.3 4.3 0 0 0 9 19z"/><path d="M11 23l-1.5 4M17 23l-1.5 4M23 23l-1.5 4"/>',
+    snow: '<path d="M9 19h14a5 5 0 0 0 0-10 7 7 0 0 0-13.5 1.5A4.3 4.3 0 0 0 9 19z"/><path d="M11 24v.1M16 27v.1M21 24v.1M13.5 29v.1M18.5 29v.1"/>',
+    storm: '<path d="M9 19h14a5 5 0 0 0 0-10 7 7 0 0 0-13.5 1.5A4.3 4.3 0 0 0 9 19z"/><path d="M17 20l-3 5h4l-3 5"/>'
+  };
+  function icon(name, cls) { return '<svg class="i ' + (cls || '') + '" viewBox="0 0 32 32">' + (ICONS[name] || ICONS.cloud) + '</svg>'; }
+
+  function clockInner() {
+    var t = timeParts(Date.now());
+    return '<div class="t">' + t.t + '<small>' + t.a + '</small></div><div class="d">' + longDay(todayKey()) + '</div>';
+  }
+  function clockHTML(small) { return '<div class="clock js-clock' + (small ? ' sm' : '') + '">' + clockInner() + '</div>'; }
+
+  function panel(title, sub, body, opts) {
+    opts = opts || {};
+    return '<div class="panel' + (opts.grow ? ' grow' : '') + '">' +
+      '<div class="tbar"><b>' + esc(title) + '</b><span class="sub">' + (sub || '') + '</span>' + (opts.action || '') + '</div>' +
+      '<div class="pbody">' + body + '</div></div>';
+  }
+
+  function warningsHTML() {
+    return (B.warnings || []).map(function (w) { return '<div class="warn">' + esc(w) + '</div>'; }).join('');
+  }
+
+  function evRow(e) {
+    var now = Date.now(), cls = 'ev';
+    if (!e.allDay && e.end <= now) cls += ' past';
+    else if (!e.allDay && e.start <= now) cls += ' now';
+    var t = e.allDay ? 'All day' : (function () { var p = timeParts(e.start); return p.t + '<small>' + p.a + '</small>'; })();
+    return '<div class="' + cls + '" data-act="ev" data-key="' + esc(e.key) + '"><div class="t">' + t + '</div>' +
+      '<div class="m">' + markerHTML(e.calId) + '</div><div class="x">' + esc(e.title) +
+      (countdownOn(e.key) ? '<span class="cdmark">COUNTDOWN</span>' : '') +
+      (e.location ? '<span class="loc">' + esc(e.location) + '</span>' : '') + '</div></div>';
+  }
+
+  function agendaHTML(nDays, cals, emptyToday) {
+    var html = '', t = todayKey();
+    for (var i = 0; i < nDays; i++) {
+      var k = addDays(t, i), evs = eventsOn(k, cals);
+      html += '<div class="day' + (i === 0 ? ' today' : '') + '"><h3>' + dayLabel(k) + '</h3>';
+      if (!evs.length) html += '<div class="none">' + (i === 0 ? (emptyToday || 'Nothing scheduled') : 'Free') + '</div>';
+      evs.forEach(function (e) { html += evRow(e); });
+      html += '</div>';
+    }
+    return html;
+  }
+
+  function keyHTML(cals) {
+    var shown = B.calendars.filter(function (c) { return cals[c.id]; });
+    if (shown.length < 2) return '';
+    return '<div class="key">' + shown.map(function (c) { return '<span>' + markerHTML(c.id) + esc(c.name) + '</span>'; }).join('') + '</div>';
+  }
+
+  function taskRow(listId, t) {
+    var due = '';
+    if (t.due && !t.done) {
+      var n = dnOf(t.due) - dnOf(todayKey());
+      due = '<span class="due' + (n < 0 ? ' late' : '') + '">' + (n < 0 ? 'overdue' : n === 0 ? 'today' : n === 1 ? 'tomorrow' : shortDay(t.due).substr(5)) + '</span>';
+    }
+    return '<div class="task' + (t.done ? ' done' : '') + (t.busy ? ' busy' : '') + '" data-act="task" data-hold="taskd" data-list="' + esc(listId) + '" data-id="' + esc(t.id) + '">' +
+      '<div class="bx"></div><div class="tt">' + esc(t.title) + '</div>' + due + '</div>';
+  }
+
+  function taskPanel(list, grow) {
+    var items = B.tasks[list.id] || [];
+    var open = items.filter(function (t) { return !t.done; }).length;
+    var body = items.length ? items.map(function (t) { return taskRow(list.id, t); }).join('') :
+      '<div class="none">Nothing here. Tap + Add.</div>';
+    return panel(list.title, open + ' to do', body, {
+      grow: grow, action: '<button class="add" data-act="addtask" data-list="' + esc(list.id) + '">+ Add</button>'
+    });
+  }
+
+  function noListsHTML() { return '<div class="hint">No task lists are shown. Choose some in Settings → Tasks &amp; lists.</div>'; }
+
+  function weatherHTML() {
+    var w = B.weather;
+    if (!w) return panel('Weather', '', '<div class="none">Weather is unavailable right now.</div>');
+    var today = w.days[0];
+    var body = '<div class="wx">' + icon(w.icon, 'ic') + '<div class="tmp">' + w.temp + '&deg;</div><div class="tx">' + esc(w.text) +
+      (today ? '<br><span class="muted">H ' + today.hi + '&deg; &middot; L ' + today.lo + '&deg;</span>' : '') + '</div></div><div class="wxd">';
+    w.days.slice(1, 4).forEach(function (d) {
+      body += '<div><b>' + DAYS[wdOf(d.day)].substr(0, 3) + '</b>' + icon(d.icon) + d.hi + '&deg; / ' + d.lo + '&deg;' +
+        (d.rain ? '<br><span class="muted">' + d.rain + '% rain</span>' : '') + '</div>';
+    });
+    return panel('Weather', esc(S.place || ''), body + '</div>');
+  }
+
+  // ================================================================
+  //  THE VIEWS (choose up to 3 in Settings -> Board views)
+  // ================================================================
+  var VIEWS = {
+    combo: {
+      name: 'Combination', desc: 'Calendar, to-do and weather together. Pick its design below.',
+      render: function () {
+        var d = S.comboDesign;
+        if (d === 'pf') return VIEWS.pf.render();
+        if (d === 'todo') return VIEWS.todofirst.render();
+        var cals = shownCalIds(), lists = shownLists();
+        return '<div class="row"><div class="colm" style="width:58%">' + clockHTML() +
+          panel('Calendar', '', warningsHTML() + agendaHTML(4, cals), { grow: true }) + keyHTML(cals) + '</div>' +
+          '<div class="colm" style="width:42%">' + (lists.length ? taskPanel(lists[0], true) : noListsHTML()) + weatherHTML() + '</div></div>';
+      }
+    },
+    todofirst: {
+      name: 'To-do first', desc: 'Your to-do lists take the big side; calendar and weather on the right.',
+      render: function () {
+        var cals = shownCalIds(), lists = shownLists();
+        var left = lists.length ? taskPanel(lists[0], true) + (lists[1] ? taskPanel(lists[1], true) : '') : noListsHTML();
+        return '<div class="row"><div class="colm" style="width:56%">' + left + '</div>' +
+          '<div class="colm" style="width:44%">' + clockHTML(true) +
+          panel('Calendar', '', warningsHTML() + agendaHTML(3, cals), { grow: true }) + weatherHTML() + '</div></div>';
+      }
+    },
+    calendar: {
+      name: 'Calendar', desc: 'The next several days side by side, all your calendars mixed together.',
+      render: function () {
+        var cals = shownCalIds(), n = S.calDays || 5, t = todayKey(), html = '<div class="colm" style="height:100%;width:100%">' + warningsHTML() + '<div class="cols grow">';
+        for (var i = 0; i < n; i++) {
+          var k = addDays(t, i), evs = eventsOn(k, cals), p = partsOf(k), now = Date.now();
+          html += '<div class="dcol' + (i === 0 ? ' today' : '') + '"><div class="dh">' + (i === 0 ? 'Today' : DAYS[wdOf(k)].substr(0, 3)) +
+            '<span>' + MONTHS[p.m].substr(0, 3) + ' ' + p.d + '</span></div><div class="pbody">';
+          if (!evs.length) html += '<div class="none">Free</div>';
+          evs.forEach(function (e) {
+            var past = !e.allDay && e.end <= now;
+            html += '<div class="cev' + (e.allDay ? ' allday' : '') + (past ? ' past' : '') + '" data-act="ev" data-key="' + esc(e.key) + '">' +
+              (e.allDay ? '' : '<span class="ct">' + hm(e.start) + '</span>') + markerHTML(e.calId) + ' ' + esc(e.title) +
+              (e.location ? '<span class="loc">' + esc(e.location) + '</span>' : '') + '</div>';
+          });
+          html += '</div></div>';
+        }
+        return html + '</div>' + keyHTML(cals) + '</div>';
+      }
+    },
+    tasks: {
+      name: 'Tasks', desc: 'Your task lists side by side, each with its own + Add.',
+      render: function () {
+        var lists = shownLists().slice(0, 4);
+        if (!lists.length) return noListsHTML();
+        return '<div class="row">' + lists.map(function (l) {
+          return '<div class="colm" style="width:' + (100 / lists.length) + '%">' + taskPanel(l, true) + '</div>';
+        }).join('') + '</div>';
+      }
+    },
+    pf: {
+      name: 'Personal + Family', desc: 'The screen split in two, each side with its own calendars and lists.',
+      render: function () {
+        var html = '<div class="pf">';
+        ['left', 'right'].forEach(function (side) {
+          var cfg = S.pf[side] || {}, cals = setOf(cfg.cals), lists = (cfg.lists || []).map(listById).filter(function (l) { return l && B.tasks[l.id]; });
+          html += '<div class="side"><div class="who">' + esc(cfg.name || (side === 'left' ? 'Left' : 'Right')) + '</div>';
+          if (!(cfg.cals || []).length && !lists.length) {
+            html += '<div class="hint">Choose this side’s calendars and lists in Settings → Personal + Family.</div></div>';
+            return;
+          }
+          if ((cfg.cals || []).length) html += panel('Calendar', '', agendaHTML(3, cals), { grow: true });
+          lists.slice(0, 2).forEach(function (l) { html += taskPanel(l, true); });
+          html += '</div>';
+        });
+        return html + '</div>';
+      }
+    },
+    countdowns: {
+      name: 'Countdowns', desc: 'Up to 4 big cards counting down to the events you choose.',
+      render: function () {
+        var list = liveCountdowns().slice(0, 4);
+        if (!list.length) return '<div class="hint">No countdowns yet. Tap an event and turn on “Count down to this”, or put #countdown in an event’s title.</div>';
+        return '<div class="cards">' + list.map(function (c) {
+          var n = dnOf(c.day) - dnOf(todayKey()), big;
+          if (n <= 0) big = 'Today!';
+          else if (n > 99) big = Math.round(n / 7) + '<small>weeks</small>';
+          else big = n + '<small>' + (n === 1 ? 'day' : 'days') + '</small>';
+          return '<div class="card' + (list.length === 1 ? ' one' : list.length === 2 ? ' tall' : '') + (n <= 0 ? ' today' : '') + '" data-act="cd" data-key="' + esc(c.key) + '">' +
+            '<div><div class="ttl">' + esc(c.title) + '</div><div class="dt">' + longDay(c.day) + (c.start ? ' · ' + hm(c.start) : '') + '</div></div>' +
+            '<div class="big">' + big + '</div></div>';
+        }).join('') + '</div>';
+      }
+    },
+    week: {
+      name: 'Week', desc: 'Monday to Sunday of this week, with events in each day.',
+      render: function () {
+        var cals = shownCalIds(), t = todayKey(), mon = addDays(t, -((wdOf(t) + 6) % 7)), now = Date.now(), html = '<div class="cols week">';
+        for (var i = 0; i < 7; i++) {
+          var k = addDays(mon, i), evs = eventsOn(k, cals), p = partsOf(k);
+          html += '<div class="dcol' + (k === t ? ' today' : '') + '"><div class="dh">' + DAYS[wdOf(k)].substr(0, 3) + '<span>' + p.d + '</span></div><div class="pbody">';
+          evs.forEach(function (e) {
+            html += '<div class="cev' + (e.allDay ? ' allday' : '') + (!e.allDay && e.end <= now ? ' past' : '') + '" data-act="ev" data-key="' + esc(e.key) + '">' +
+              (e.allDay ? '' : '<span class="ct">' + hm(e.start) + '</span>') + esc(e.title) + '</div>';
+          });
+          html += '</div></div>';
+        }
+        return html + '</div>';
+      }
+    },
+    month: {
+      name: 'Month', desc: 'A month grid with event titles in each day. Tap a day to see it all.',
+      render: function () {
+        var cals = shownCalIds(), t = todayKey(), p = partsOf(t);
+        var first = p.y + '-' + pad(p.m + 1) + '-01', start = addDays(first, -((wdOf(first) + 6) % 7));
+        var html = '<div class="month"><div class="mh">' + MONTHS[p.m] + ' ' + p.y + '</div><div class="mgrid"><div class="mrow hd">';
+        ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(function (d) { html += '<div class="mcell" style="border:0">' + d + '</div>'; });
+        html += '</div>';
+        var weeks = Math.ceil((dnOf(first) - dnOf(start) + new Date(p.y, p.m + 1, 0).getDate()) / 7);
+        for (var w = 0; w < weeks; w++) {
+          html += '<div class="mrow">';
+          for (var d = 0; d < 7; d++) {
+            var k = addDays(start, w * 7 + d), evs = eventsOn(k, cals), kp = partsOf(k);
+            html += '<div class="mcell' + (kp.m !== p.m ? ' other' : '') + (k === t ? ' today' : '') + '" data-act="day" data-day="' + k + '"><span class="n">' + kp.d + '</span>';
+            evs.slice(0, 3).forEach(function (e) { html += '<div class="mi">' + (e.allDay ? '' : timeParts(e.start).t + ' ') + esc(e.title) + '</div>'; });
+            if (evs.length > 3) html += '<div class="mi muted">+' + (evs.length - 3) + ' more</div>';
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+        return html + '</div></div>';
+      }
+    },
+    nightclock: {
+      name: 'Night clock', desc: 'A huge clock and the next event, readable from across the room.',
+      render: function () { return '<div class="nclock js-nclock">' + nightClockInner() + '</div>'; }
+    },
+    photos: {
+      name: 'Photos', desc: 'Your photos as a slideshow, in the same black-and-white style as Sleep.',
+      render: function () { return '<div class="pframe js-photoview"></div>'; }
+    }
+  };
+  var VIEW_ORDER = ['combo', 'calendar', 'tasks', 'pf', 'countdowns', 'todofirst', 'week', 'month', 'nightclock', 'photos'];
+
+  function nightClockInner() {
+    var t = timeParts(Date.now()), cals = B ? shownCalIds() : {}, nx = B ? nextEvent(cals) : null, wx = B && B.weather;
+    var nextTxt = nx ? 'Next: <b>' + esc(nx.title) + '</b> · ' + (evDay(nx) === todayKey() ? '' : 'tomorrow ') + hm(nx.start) : 'Nothing else today';
+    return '<div class="t">' + t.t + '<small>' + t.a + '</small></div><div class="d">' + longDay(todayKey()) +
+      (wx ? ' · ' + wx.temp + '&deg;' : '') + '</div><div class="nx">' + nextTxt + '</div>';
+  }
+
+  // Tap actions on the board
+  ACT.noop = function () {};
+  ACT.dot = function (el) { goView(+attr(el, 'i')); };
+  ACT.refresh = function () { load(); };
+  ACT.task = function (el) {
+    var listId = attr(el, 'list'), t = findTask(listId, attr(el, 'id'));
+    if (!t || t.busy || /^tmp/.test(t.id)) return;
+    t.done = !t.done;
+    if (t.done) t.completed = Date.now();
+    send('task.toggle', [listId, t.id, t.done], function () { t.done = !t.done; });
+  };
+
+  // ================================================================
+  //  POP-UP SHEETS
+  // ================================================================
+  var sheetCtx = null;
+  function openSheet(title, body, foot) {
+    sheetOpen = true;
+    $('sheetCard').innerHTML = '<div class="sh"><h2>' + esc(title) + '</h2><button class="btn sm" data-act="close">Close</button></div>' +
+      '<div class="sb" id="sheetBody">' + body + '</div>' + (foot ? '<div class="sf">' + foot + '</div>' : '');
+    $('sheet').className = 'scrim';
+  }
+  function closeSheet() {
+    if (document.activeElement && isField(document.activeElement)) document.activeElement.blur();
+    sheetOpen = false; sheetCtx = null;
+    $('sheet').className = 'scrim hide';
+    $('sheetCard').innerHTML = '';
+  }
+  ACT.close = closeSheet;
+  ACT.scrim = closeSheet;
+  ACT.chk = function (el) {
+    var on = el.className.indexOf(' on') < 0;
+    el.className = on ? el.className + ' on' : el.className.replace(' on', '');
+    var then = attr(el, 'then');
+    if (then && ACT[then]) ACT[then](el);
+  };
+  function chkOn(id) { var el = $(id); return !!el && el.className.indexOf(' on') >= 0; }
+  function chkHTML(id, label, on, then) {
+    return '<div class="chk' + (on ? ' on' : '') + '" id="' + id + '" data-act="chk"' + (then ? ' data-then="' + then + '"' : '') + '><span class="bx"></span>' + label + '</div>';
+  }
+  function val(id) { var el = $(id); return el ? String(el.value || '').replace(/^\s+|\s+$/g, '') : ''; }
+  function confirmHTML(q, yesAct, yesLabel) {
+    return '<div class="confirm" id="confirmBox">' + esc(q) + '<br><button class="btn pri" data-act="' + yesAct + '">' + esc(yesLabel) + '</button>' +
+      '<button class="btn" data-act="confirmno">Keep it</button></div>';
+  }
+  function showConfirm(q, yesAct, yesLabel) {
+    var old = $('confirmBox'); if (old) old.parentNode.removeChild(old);
+    var d = document.createElement('div'); d.innerHTML = confirmHTML(q, yesAct, yesLabel);
+    $('sheetBody').appendChild(d.firstChild);
+    $('sheetBody').scrollTop = 99999;
+  }
+  ACT.confirmno = function () { var c = $('confirmBox'); if (c) c.parentNode.removeChild(c); };
+
+  // ---------- event details ----------
+  function openEvent(key) {
+    var e = findEvent(key);
+    if (!e) { openCountdownOnly(key); return; }
+    sheetCtx = { kind: 'event', key: key };
+    var cal = calById(e.calId) || { name: '', type: 'google' };
+    var src = cal.type === 'ics' ? (cal.kind === 'icloud' ? 'iCloud' : cal.kind === 'outlook' ? 'Outlook' : 'Calendar link') : 'Google';
+    var body = '<div class="info"><span class="k">When</span>' + esc(whenText(e)) + '</div>' +
+      (e.location ? '<div class="info"><span class="k">Where</span>' + esc(e.location) + '</div>' : '') +
+      (e.notes ? '<div class="info"><span class="k">Notes</span>' + esc(e.notes) + '</div>' : '') +
+      '<div class="info"><span class="k">Calendar</span>' + markerHTML(e.calId) + ' ' + esc(cal.name) + '<span class="tag">' + src + '</span></div>' +
+      '<div class="srow"><div class="grow">Count down to this<small>Shows in the header and the Countdowns view</small></div>' +
+      '<span class="sw' + (countdownOn(key) ? ' on' : '') + '" id="cdSw" data-act="cdtoggle"></span></div>';
+    if (!e.editable) {
+      body += '<div class="note">' + (cal.type === 'ics' ? 'From ' + src + ': view-only on the board. Change it in ' + src + '.' :
+        e.recurring ? 'This is a repeating event. Change it in Google Calendar.' : 'This calendar is view-only.') + '</div>';
+    }
+    var foot = e.editable ? '<button class="btn warn left" data-act="evdel">Delete</button><button class="btn" data-act="evedit">Edit</button>' +
+      '<button class="btn pri" data-act="close">Done</button>' : '<button class="btn pri" data-act="close">Done</button>';
+    openSheet(e.title, body, foot);
+  }
+  function openCountdownOnly(key) {
+    var c = null;
+    B.countdowns.forEach(function (x) { if (x.key === key) c = x; });
+    if (!c) return;
+    sheetCtx = { kind: 'cd', key: key, c: c };
+    openSheet(c.title, '<div class="info"><span class="k">When</span>' + esc(longDay(c.day)) + (c.start ? ' · ' + hm(c.start) : '') + '</div>' +
+      '<div class="info"><span class="k">Counting down</span>' + cdLabel(c) + '</div>' +
+      '<div class="srow"><div class="grow">Count down to this</div><span class="sw on" id="cdSw" data-act="cdtoggle"></span></div>',
+      '<button class="btn pri" data-act="close">Done</button>');
+  }
+  function setCountdown(key, on) {
+    var e = findEvent(key), c0 = null;
+    B.countdowns.forEach(function (x) { if (x.key === key) c0 = x; });
+    var item = e ? { key: key, title: e.title, day: evDay(e), start: e.allDay ? null : e.start } : c0;
+    if (!item) return;
+    var tagged = (e && e.tagged) || (c0 && c0.tagged);
+    var cds = (S.countdowns || []).filter(function (c) { return c.key !== key; });
+    var off = (S.countdownOff || []).filter(function (k) { return k !== key; });
+    if (on) cds.push(item); else if (tagged) off.push(key);
+    B.countdowns = B.countdowns.filter(function (c) { return c.key !== key; });
+    if (on) { B.countdowns.push(item); B.countdowns.sort(function (a, b) { return a.day < b.day ? -1 : a.day > b.day ? 1 : (a.start || 0) - (b.start || 0); }); }
+    saveSettings({ countdowns: cds, countdownOff: off });
+  }
+  ACT.cdtoggle = function (el) {
+    if (!sheetCtx) return;
+    var on = el.className.indexOf(' on') < 0;
+    el.className = on ? 'sw on' : 'sw';
+    setCountdown(sheetCtx.key, on);
+  };
+  ACT.ev = function (el) { openEvent(attr(el, 'key')); };
+  ACT.cd = function (el) { openEvent(attr(el, 'key')); };
+  ACT.evdel = function () { showConfirm('Delete this event? This also removes it from Google Calendar.', 'evdelyes', 'Yes, delete'); };
+  ACT.evdelyes = function () {
+    var key = sheetCtx.key, keep = B.events.slice(), keepCd = B.countdowns.slice();
+    B.events = B.events.filter(function (e) { return e.key !== key; });
+    B.countdowns = B.countdowns.filter(function (c) { return c.key !== key; });
+    closeSheet();
+    send('event.delete', [key], function () { B.events = keep; B.countdowns = keepCd; });
+  };
+  ACT.evedit = function () { openEventForm(findEvent(sheetCtx.key)); };
+
+  // ---------- + Event / edit event ----------
+  function openEventForm(e, day) {
+    var cals = writableCals();
+    if (!cals.length) { toast('No Google calendar you can add to.'); return; }
+    var editing = !!e;
+    sheetCtx = { kind: 'evform', key: e ? e.key : null };
+    var d = e ? evDay(e) : (day || todayKey());
+    var st, en;
+    if (e && !e.allDay) { st = timeParts(e.start).hh; en = timeParts(e.end).hh; }
+    else { var h = Math.min(new Date().getHours() + 1, 22); st = pad(h) + ':00'; en = pad(h + 1) + ':00'; }
+    var allDay = e ? e.allDay : false;
+    var calOpts = cals.map(function (c) { return '<option value="' + esc(c.id) + '"' + (c.id === (e ? e.calId : defaultCalId()) ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('');
+    var body = '<div class="fld"><label>Title</label><input class="inp" id="fTitle" maxlength="200" autocomplete="off" value="' + esc(e ? e.title : '') + '" placeholder="What’s happening?"></div>' +
+      (editing ? '' : '<div class="fld"><label>Calendar</label><select class="inp" id="fCal">' + calOpts + '</select></div>') +
+      chkHTML('fAllDay', 'All day', allDay, 'evallday') +
+      '<div class="two" style="margin-top:10px"><div class="fld"><label>Day</label><input class="inp" type="date" id="fDay" value="' + d + '"></div>' +
+      '<div class="fld' + (allDay ? '' : ' hide') + '" id="fEndWrap"><label>Last day (optional)</label><input class="inp" type="date" id="fEndDay" value="' + (e && e.allDay && addDays(e.endKey, -1) > e.startKey ? addDays(e.endKey, -1) : '') + '"></div></div>' +
+      '<div class="two' + (allDay ? ' hide' : '') + '" id="fTimes"><div class="fld"><label>Starts</label><input class="inp" type="time" id="fStart" value="' + st + '"></div>' +
+      '<div class="fld"><label>Ends</label><input class="inp" type="time" id="fEnd" value="' + en + '"></div></div>' +
+      '<div class="fld"><label>Location</label><input class="inp" id="fLoc" maxlength="200" autocomplete="off" value="' + esc(e ? e.location : '') + '"></div>' +
+      '<div class="fld"><label>Notes</label><textarea class="inp" id="fNotes" rows="2">' + esc(e ? e.notes : '') + '</textarea></div>' +
+      (editing ? '' : chkHTML('fCd', 'Count down to this', false));
+    openSheet(editing ? 'Edit event' : 'New event', body, '<button class="btn" data-act="close">Cancel</button><button class="btn pri" data-act="evsave">' + (editing ? 'Save' : 'Add') + '</button>');
+  }
+  ACT.evallday = function () {
+    var on = chkOn('fAllDay');
+    $('fTimes').className = 'two' + (on ? ' hide' : '');
+    $('fEndWrap').className = 'fld' + (on ? '' : ' hide');
+  };
+  ACT.addev = function () { openEventForm(null); };
+  ACT.addevday = function (el) { openEventForm(null, attr(el, 'day')); };
+  ACT.evsave = function () {
+    var f = {
+      title: val('fTitle'), allDay: chkOn('fAllDay'), day: val('fDay') || todayKey(), endDay: val('fEndDay'),
+      startTime: val('fStart') || '09:00', endTime: val('fEnd') || '', location: val('fLoc'), notes: val('fNotes')
+    };
+    if (!f.title) { toast('Add a title first.'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(f.day)) { toast('Pick a day.'); return; }
+    var startMs = f.allDay ? 0 : localMs(f.day, +f.startTime.split(':')[0], +f.startTime.split(':')[1]);
+    var endMs = f.allDay ? 0 : localMs(f.day, +(f.endTime || f.startTime).split(':')[0], +(f.endTime || f.startTime).split(':')[1]);
+    if (!f.allDay && endMs <= startMs) endMs = startMs + 3600000;
+    var shape = { title: f.title, location: f.location, notes: f.notes, allDay: f.allDay };
+    if (f.allDay) { shape.startKey = f.day; shape.endKey = addDays(f.endDay && f.endDay > f.day ? f.endDay : f.day, 1); }
+    else { shape.start = startMs; shape.end = endMs; }
+    if (sheetCtx.key) {
+      var e = findEvent(sheetCtx.key), keep = clone(e);
+      each(shape, function (v, k) { e[k] = v; });
+      if (!f.allDay) { delete e.startKey; delete e.endKey; } else { delete e.start; delete e.end; }
+      closeSheet();
+      send('event.update', [keep.key, f], function () { each(keep, function (v, k) { e[k] = v; }); });
+    } else {
+      f.calId = val('fCal');
+      f.countdown = chkOn('fCd');
+      shape.key = 'tmp' + Date.now(); shape.calId = f.calId; shape.editable = false;
+      B.events.push(shape);
+      if (f.countdown) B.countdowns.push({ key: shape.key, title: f.title, day: f.day, start: f.allDay ? null : startMs });
+      closeSheet();
+      toast('Added to ' + ((calById(f.calId) || {}).name || 'calendar'));
+      send('event.add', [f], function () {
+        B.events = B.events.filter(function (x) { return x !== shape; });
+        B.countdowns = B.countdowns.filter(function (c) { return c.key !== shape.key; });
+      });
+    }
+  };
+
+  // ---------- day (from the month grid) ----------
+  ACT.day = function (el) {
+    var k = attr(el, 'day'), evs = eventsOn(k, shownCalIds());
+    openSheet(longDay(k), evs.length ? evs.map(evRow).join('') : '<div class="none">Nothing scheduled.</div>',
+      '<button class="btn" data-act="addevday" data-day="' + k + '">+ Event this day</button><button class="btn pri" data-act="close">Done</button>');
+  };
+
+  // ---------- + Task / task details ----------
+  function openTaskForm(listId, t) {
+    var editing = !!t;
+    sheetCtx = { kind: 'task', list: listId, id: t ? t.id : null };
+    var opts = B.lists.map(function (l) { return '<option value="' + esc(l.id) + '"' + (l.id === listId ? ' selected' : '') + '>' + esc(l.title) + '</option>'; }).join('');
+    var body = '<div class="fld"><label>Task</label><input class="inp" id="tTitle" maxlength="300" autocomplete="off" value="' + esc(t ? t.title : '') + '" placeholder="What needs doing?"></div>' +
+      '<div class="fld"><label>List</label><select class="inp" id="tList">' + opts + '</select></div>' +
+      '<div class="fld"><label>Due (optional)</label><div class="two"><input class="inp" type="date" id="tDue" value="' + (t && t.due ? t.due : '') + '">' +
+      '<div style="-webkit-flex:none;flex:none"><button class="btn" data-act="cleardue">No due date</button></div></div></div>';
+    var foot = (editing ? '<button class="btn warn left" data-act="taskdel">Delete</button>' : '') +
+      '<button class="btn" data-act="close">Cancel</button><button class="btn pri" data-act="tasksave">' + (editing ? 'Save' : 'Add') + '</button>';
+    openSheet(editing ? 'Task' : 'New task', body, foot);
+    if (!editing) setTimeout(function () { try { $('tTitle').focus(); } catch (e) {} }, 300);
+  }
+  ACT.addtask = function (el) { openTaskForm(attr(el, 'list')); };
+  HOLD.taskd = function (el) {
+    var t = findTask(attr(el, 'list'), attr(el, 'id'));
+    if (t && !/^tmp/.test(t.id)) openTaskForm(attr(el, 'list'), t);
+  };
+  ACT.cleardue = function () { $('tDue').value = ''; };
+  ACT.tasksave = function () {
+    var title = val('tTitle'), list = val('tList'), due = val('tDue');
+    if (!title) { toast('Type the task first.'); return; }
+    var c = sheetCtx;
+    closeSheet();
+    if (!c.id) {
+      var tmp = { id: 'tmp' + Date.now(), title: title, done: false, due: due };
+      if (B.tasks[list]) B.tasks[list].unshift(tmp);
+      send('task.add', [list, title, due], function () { if (B.tasks[list]) B.tasks[list] = B.tasks[list].filter(function (x) { return x !== tmp; }); });
+      return;
+    }
+    var t = findTask(c.list, c.id); if (!t) return;
+    var keep = clone(t), changed = title !== t.title || due !== (t.due || '');
+    t.title = title; t.due = due;
+    if (list !== c.list) {
+      B.tasks[c.list] = B.tasks[c.list].filter(function (x) { return x !== t; });
+      if (B.tasks[list]) B.tasks[list].unshift(t);
+      renderAll();
+      var go = function () { api('task.move', [c.list, c.id, list], function () { reloadSoon(); }, function (e) { toast(e === 'offline' ? 'Could not move it. Check Wi-Fi.' : e); load(); }); };
+      if (changed) api('task.update', [c.list, c.id, { title: title, due: due }], go, function (e) { toast(e === 'offline' ? 'Could not save. Check Wi-Fi.' : e); load(); });
+      else go();
+      return;
+    }
+    if (changed) send('task.update', [c.list, c.id, { title: title, due: due }], function () { t.title = keep.title; t.due = keep.due; });
+  };
+  ACT.taskdel = function () { showConfirm('Delete this task?', 'taskdelyes', 'Yes, delete'); };
+  ACT.taskdelyes = function () {
+    var c = sheetCtx, keep = B.tasks[c.list].slice();
+    B.tasks[c.list] = B.tasks[c.list].filter(function (x) { return x.id !== c.id; });
+    closeSheet();
+    send('task.delete', [c.list, c.id], function () { B.tasks[c.list] = keep; });
+  };
+
+  // ================================================================
+  //  SETTINGS (press and hold the page dots for 2 seconds)
+  // ================================================================
+  var setTab = 'views', upcomingList = null, renaming = null;
+  var CHG = {};
+  document.addEventListener('change', function (e) { var a = e.target && attr(e.target, 'change'); if (a && CHG[a]) CHG[a](e.target); });
+
+  HOLD.settings = function () {
+    if (!B) return;
+    if (S.passcode) { askPasscode(); return; }
+    showSettings();
+  };
+  function showSettings() {
+    settingsOpen = true; setTab = setTab || 'views'; upcomingList = null; renaming = null;
+    $('settings').className = '';
+    renderSettings();
+  }
+  function hideSettings() {
+    if (document.activeElement && isField(document.activeElement)) document.activeElement.blur();
+    settingsOpen = false;
+    $('settings').className = 'hide';
+    $('settings').innerHTML = '';
+    renderAll();
+  }
+  ACT.setdone = hideSettings;
+  ACT.settab = function (el) { setTab = attr(el, 'tab'); renaming = null; renderSettings(); };
+
+  var TABS = [['views', 'Board views'], ['cals', 'Calendars'], ['lists', 'Tasks & lists'], ['pf', 'Personal + Family'],
+    ['cds', 'Countdowns'], ['photos', 'Photos'], ['display', 'Display']];
+
+  function renderSettings() {
+    var html = '<div class="st"><h1>Settings</h1><button class="btn pri" data-act="setdone">Done</button></div><div class="sbody"><div class="tabs">';
+    TABS.forEach(function (t) { html += '<button class="tab' + (setTab === t[0] ? ' on' : '') + '" data-act="settab" data-tab="' + t[0] + '">' + esc(t[1]) + '</button>'; });
+    html += '</div><div class="pane" id="setPane">' + PANES[setTab]() + '</div></div>';
+    var keep = $('setPane') ? $('setPane').scrollTop : 0;
+    $('settings').innerHTML = html;
+    $('setPane').scrollTop = keep;
+    if (setTab === 'photos') drawDotPreview();
+  }
+  // After a refresh from Google, redraw unless someone is typing.
+  function renderSettingsSoft() { if (!(document.activeElement && isField(document.activeElement))) renderSettings(); }
+
+  function swHTML(on, act, extra) { return '<span class="sw' + (on ? ' on' : '') + '" data-act="' + act + '"' + (extra || '') + '></span>'; }
+  function seg(cur, act, opts) {
+    return '<span class="seg">' + opts.map(function (o) {
+      return '<button class="' + (String(cur) === String(o[0]) ? 'on' : '') + '" data-act="' + act + '" data-v="' + esc(o[0]) + '">' + esc(o[1]) + '</button>';
+    }).join('') + '</span>';
+  }
+  // Destructive buttons ask for a second tap.
+  function twice(el, msg, fn) {
+    if (attr(el, 'armed') === '1') { fn(); return; }
+    var old = el.innerHTML;
+    el.setAttribute('data-armed', '1'); el.innerHTML = esc(msg); el.className += ' pri';
+    setTimeout(function () { if (el.parentNode) { el.setAttribute('data-armed', '0'); el.innerHTML = old; el.className = el.className.replace(' pri', ''); } }, 3500);
+  }
+
+  var PANES = {};
+
+  // ---------- Board views ----------
+  PANES.views = function () {
+    var chosen = S.views, html = '<h2>Board views</h2><p class="lead">Tick up to 3 views to swipe between. The first one is home: the board returns to it after ' +
+      S.homeMinutes + ' minute' + (S.homeMinutes === 1 ? '' : 's') + ' untouched. Use the arrows to change the order.</p>';
+    var order = chosen.concat(VIEW_ORDER.filter(function (v) { return chosen.indexOf(v) < 0; }));
+    order.forEach(function (id) {
+      var v = VIEWS[id], i = chosen.indexOf(id), on = i >= 0;
+      html += '<div class="srow"><div class="chk' + (on ? ' on' : '') + '" data-act="vtoggle" data-id="' + id + '"><span class="bx"></span></div>' +
+        '<div class="grow"><b>' + (on ? (i + 1) + '. ' : '') + esc(v.name) + '</b>' + (i === 0 ? '<span class="tag">Home</span>' : '') + '<small>' + esc(v.desc) + '</small></div>' +
+        (on ? '<button class="arrow" data-act="vmove" data-id="' + id + '" data-d="-1"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
+          '<button class="arrow" data-act="vmove" data-id="' + id + '" data-d="1"' + (i === chosen.length - 1 ? ' disabled' : '') + '>▼</button>' : '') + '</div>';
+    });
+    html += '<h3>Combination design</h3>' + seg(S.comboDesign, 'combo', [['classic', 'Classic'], ['todo', 'To-do first'], ['pf', 'Personal + Family']]);
+    html += '<h3>Days in the Calendar view</h3>' + seg(S.calDays || 5, 'caldays', [[3, '3 days'], [5, '5 days'], [7, '7 days']]);
+    return html;
+  };
+  ACT.vtoggle = function (el) {
+    var id = attr(el, 'id'), v = S.views.slice(), i = v.indexOf(id);
+    if (i >= 0) { if (v.length === 1) { toast('Keep at least one view.'); return; } v.splice(i, 1); }
+    else { if (v.length >= 3) { toast('Untick one first. Up to 3 views.'); return; } v.push(id); }
+    view = 0;
+    saveSettings({ views: v }); renderSettings();
+  };
+  ACT.vmove = function (el) {
+    if (el.disabled) return;
+    var v = S.views.slice(), i = v.indexOf(attr(el, 'id')), j = i + (+attr(el, 'd'));
+    if (j < 0 || j >= v.length) return;
+    var t = v[i]; v[i] = v[j]; v[j] = t;
+    view = 0;
+    saveSettings({ views: v }); renderSettings();
+  };
+  ACT.combo = function (el) { saveSettings({ comboDesign: attr(el, 'v') }); renderSettings(); };
+  ACT.caldays = function (el) { saveSettings({ calDays: +attr(el, 'v') }); renderSettings(); };
+
+  // ---------- Calendars ----------
+  PANES.cals = function () {
+    var html = '<h2>Calendars</h2><p class="lead">Choose which calendars show on the board. Each one gets its own marker shape.</p><h3>Google</h3>';
+    B.calendars.forEach(function (c) {
+      if (c.type !== 'google') return;
+      html += '<div class="srow">' + markerHTML(c.id) + '<div class="grow">' + esc(c.name) + (c.primary ? '<span class="tag">Main</span>' : '') +
+        '<small>' + (c.writable ? 'You can add events here' : 'View-only') + '</small></div>' + swHTML(c.show, 'calshow', ' data-id="' + esc(c.id) + '"') + '</div>';
+    });
+    html += '<p class="lead" style="margin-top:8px">Calendars in your Google account appear here automatically.</p>';
+    var ics = B.calendars.filter(function (c) { return c.type === 'ics'; });
+    html += '<h3>Outlook and iCloud</h3>';
+    if (!ics.length) html += '<p class="lead">None yet.</p>';
+    ics.forEach(function (c) {
+      html += '<div class="srow">' + markerHTML(c.id) + '<div class="grow">' + esc(c.name) + '<span class="tag">' + (c.kind === 'icloud' ? 'iCloud' : c.kind === 'outlook' ? 'Outlook' : 'Link') + '</span>' +
+        '<small>View-only on the board</small></div>' + swHTML(c.show, 'icsshow', ' data-id="' + esc(c.id) + '"') +
+        '<button class="btn sm" data-act="icsdel" data-id="' + esc(c.id) + '">Remove</button></div>';
+    });
+    var w = writableCals();
+    html += '<h3>Default calendar for + Event</h3><select class="inp" style="max-width:420px" data-change="defcal">' +
+      w.map(function (c) { return '<option value="' + esc(c.id) + '"' + (c.isDefault ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select>';
+    html += '<h3>Add an Outlook or iCloud calendar</h3>' +
+      '<div class="two" style="max-width:640px"><div class="fld"><label>Name</label><input class="inp" id="icsName" placeholder="e.g. School Outlook" autocomplete="off"></div>' +
+      '<div class="fld"><label>Type</label><select class="inp" id="icsKind"><option value="outlook">Outlook</option><option value="icloud">iCloud</option><option value="other">Other link</option></select></div></div>' +
+      '<div class="fld" style="max-width:640px"><label>Calendar link</label><input class="inp" id="icsUrl" placeholder="https://… or webcal://…" autocomplete="off" autocapitalize="off" autocorrect="off"></div>' +
+      '<button class="btn pri" data-act="icsadd">Add calendar</button>' +
+      '<div class="note"><b>Outlook:</b> on the web, Settings → Calendar → Shared calendars → Publish a calendar → Can view all details → copy the ICS link.<br>' +
+      '<b>iCloud:</b> in the Calendar app, tap ⓘ next to the calendar → turn on Public Calendar → Share Link.</div>';
+    return html;
+  };
+  ACT.calshow = function (el) {
+    var id = attr(el, 'id'), c = calById(id), cals = clone(S.calendars || {});
+    c.show = !c.show; cals[id] = { show: c.show };
+    saveSettings({ calendars: cals }); renderSettings();
+  };
+  ACT.icsshow = function (el) {
+    var id = attr(el, 'id'), list = clone(S.ics || []);
+    list.forEach(function (x) { if (x.id === id) x.show = x.show === false; });
+    calById(id).show = !calById(id).show;
+    saveSettings({ ics: list }); renderSettings();
+  };
+  ACT.icsdel = function (el) {
+    twice(el, 'Tap again to remove', function () {
+      var id = attr(el, 'id');
+      B.calendars = B.calendars.filter(function (c) { return c.id !== id; });
+      saveSettings({ ics: (S.ics || []).filter(function (x) { return x.id !== id; }) }); renderSettings();
+    });
+  };
+  CHG.defcal = function (el) { saveSettings({ defaultCal: el.value }); };
+  ACT.icsadd = function () {
+    var url = val('icsUrl'), kind = val('icsKind'), name = val('icsName') || (kind === 'icloud' ? 'iCloud' : kind === 'outlook' ? 'Outlook' : 'Calendar');
+    if (!/^(https?|webcal):\/\//i.test(url)) { toast('Paste the full calendar link (starts with https:// or webcal://).'); return; }
+    var list = clone(S.ics || []);
+    list.push({ id: 'ics' + Date.now(), name: name, url: url, kind: kind, show: true });
+    saveSettings({ ics: list }, function () { renderSettings(); });
+    toast('Added. Its events appear in a moment.');
+  };
+
+  // ---------- Tasks & lists ----------
+  PANES.lists = function () {
+    var html = '<h2>Tasks &amp; lists</h2><p class="lead">Tasks come from Google Tasks, so the same lists show in the Google Tasks app on your phones. ' +
+      'Renaming or removing a list here changes it everywhere.</p>';
+    B.lists.forEach(function (l, i) {
+      if (renaming === l.id) {
+        html += '<div class="srow"><input class="inp grow" id="renList" value="' + esc(l.title) + '" maxlength="100" autocomplete="off">' +
+          '<button class="btn pri" data-act="listrensave" data-id="' + esc(l.id) + '">Save</button><button class="btn" data-act="listrencancel">Cancel</button></div>';
+        return;
+      }
+      html += '<div class="srow">' + swHTML(l.show, 'listshow', ' data-id="' + esc(l.id) + '"') + '<div class="grow">' + esc(l.title) +
+        '<small>' + (l.show ? 'Shown on the board' : 'Hidden') + '</small></div>' +
+        '<button class="arrow" data-act="listmove" data-id="' + esc(l.id) + '" data-d="-1"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
+        '<button class="arrow" data-act="listmove" data-id="' + esc(l.id) + '" data-d="1"' + (i === B.lists.length - 1 ? ' disabled' : '') + '>▼</button>' +
+        '<button class="btn sm" data-act="listren" data-id="' + esc(l.id) + '">Rename</button>' +
+        '<button class="btn sm" data-act="listdel" data-id="' + esc(l.id) + '">Remove</button></div>';
+    });
+    html += '<p class="lead" style="margin-top:8px">The first shown list is the one on the Combination view. The Tasks view shows up to 4 lists.</p>';
+    html += '<h3>Add a list</h3><div class="two" style="max-width:520px"><input class="inp" id="newList" placeholder="e.g. Groceries" maxlength="100" autocomplete="off">' +
+      '<div style="-webkit-flex:none;flex:none"><button class="btn pri" data-act="listadd">Add list</button></div></div>';
+    html += '<h3>Keep checked-off tasks visible for</h3>' + seg(S.keepDoneHours, 'keepdone', [[1, '1 hour'], [12, '12 hours'], [24, '24 hours'], [72, '3 days']]);
+    return html;
+  };
+  ACT.listshow = function (el) {
+    var id = attr(el, 'id'), l = listById(id), lists = clone(S.lists || {});
+    l.show = !l.show; lists[id] = { show: l.show };
+    saveSettings({ lists: lists }); renderSettings();
+  };
+  ACT.listmove = function (el) {
+    if (el.disabled) return;
+    var i = -1, id = attr(el, 'id');
+    B.lists.forEach(function (l, k) { if (l.id === id) i = k; });
+    var j = i + (+attr(el, 'd'));
+    if (j < 0 || j >= B.lists.length) return;
+    var t = B.lists[i]; B.lists[i] = B.lists[j]; B.lists[j] = t;
+    saveSettings({ listOrder: B.lists.map(function (l) { return l.id; }) }); renderSettings();
+  };
+  ACT.listren = function (el) { renaming = attr(el, 'id'); renderSettings(); setTimeout(function () { try { $('renList').focus(); } catch (e) {} }, 100); };
+  ACT.listrencancel = function () { renaming = null; renderSettings(); };
+  ACT.listrensave = function (el) {
+    var id = attr(el, 'id'), title = val('renList');
+    if (!title) { toast('Type a name.'); return; }
+    var l = listById(id), old = l.title;
+    l.title = title; renaming = null; renderSettings();
+    send('list.rename', [id, title], function () { l.title = old; });
+  };
+  ACT.listdel = function (el) {
+    twice(el, 'Tap again: deletes the list and its tasks', function () {
+      var id = attr(el, 'id');
+      B.lists = B.lists.filter(function (l) { return l.id !== id; });
+      delete B.tasks[id];
+      renderSettings();
+      send('list.delete', [id], function () { load(); });
+    });
+  };
+  ACT.listadd = function () {
+    var title = val('newList');
+    if (!title) { toast('Type a name for the list.'); return; }
+    $('newList').value = '';
+    api('list.add', [title], function () { toast('List added.'); load(); }, function (e) { toast(e === 'offline' ? 'Could not add. Check Wi-Fi.' : e); });
+  };
+  ACT.keepdone = function (el) { saveSettings({ keepDoneHours: +attr(el, 'v') }); renderSettings(); };
+
+  // ---------- Personal + Family ----------
+  PANES.pf = function () {
+    var html = '<h2>Personal + Family</h2><p class="lead">The Personal + Family view splits the screen in two. Name each side and choose what it shows.</p><div class="pfcols">';
+    ['left', 'right'].forEach(function (side) {
+      var cfg = S.pf[side] || {}, cs = setOf(cfg.cals), ls = setOf(cfg.lists);
+      html += '<div><h3>' + (side === 'left' ? 'Left side' : 'Right side') + '</h3><div class="fld"><label>Name</label><input class="inp" maxlength="30" value="' + esc(cfg.name || '') +
+        '" data-change="pfname" data-side="' + side + '" autocomplete="off"></div><div class="lbl">Calendars</div>';
+      B.calendars.forEach(function (c) {
+        html += '<div class="chk' + (cs[c.id] ? ' on' : '') + '" data-act="pfpick" data-side="' + side + '" data-kind="cals" data-id="' + esc(c.id) + '"><span class="bx"></span>' + markerHTML(c.id) + '&nbsp;' + esc(c.name) + '</div>';
+      });
+      html += '<div class="lbl" style="margin-top:14px">Task lists</div>';
+      B.lists.forEach(function (l) {
+        html += '<div class="chk' + (ls[l.id] ? ' on' : '') + '" data-act="pfpick" data-side="' + side + '" data-kind="lists" data-id="' + esc(l.id) + '"><span class="bx"></span>' + esc(l.title) + '</div>';
+      });
+      html += '</div>';
+    });
+    return html + '</div>';
+  };
+  ACT.pfpick = function (el) {
+    var pf = clone(S.pf), side = attr(el, 'side'), kind = attr(el, 'kind'), id = attr(el, 'id');
+    var a = pf[side][kind] || [], i = a.indexOf(id);
+    if (i >= 0) a.splice(i, 1); else a.push(id);
+    pf[side][kind] = a;
+    saveSettings({ pf: pf }); renderSettings();
+  };
+  CHG.pfname = function (el) { var pf = clone(S.pf); pf[attr(el, 'side')].name = el.value.substr(0, 30); saveSettings({ pf: pf }); };
+
+  // ---------- Countdowns ----------
+  PANES.cds = function () {
+    var html = '<h2>Countdowns</h2><p class="lead">Turn on the events to count down to. Up to 3 show in the header, nearest first. ' +
+      'Tip: put <b>#countdown</b> in an event’s title or notes on any phone and it turns on by itself (the board hides the tag).</p>';
+    var live = liveCountdowns();
+    html += '<div class="lbl">Header preview</div><div style="margin:6px 0 4px">' + (live.length ? live.slice(0, 3).map(function (c) {
+      return '<span class="tag" style="font-size:15px;padding:3px 10px;border-radius:14px;text-transform:none;letter-spacing:0;margin:0 6px 6px 0;display:inline-block">' + esc(c.title) + ' · ' + cdLabel(c) + '</span>';
+    }).join('') : '<span class="muted">No countdowns on yet.</span>') + '</div>';
+    html += '<h3>Upcoming events (next 12 months)</h3>';
+    if (!upcomingList) {
+      api('upcoming', [], function (list) { upcomingList = list; if (settingsOpen && setTab === 'cds') renderSettings(); },
+        function (e) { upcomingList = []; toast(e === 'offline' ? 'Could not load events. Check Wi-Fi.' : e); });
+      return html + '<p class="lead">Loading events…</p>';
+    }
+    if (!upcomingList.length) html += '<p class="lead">No upcoming events.</p>';
+    upcomingList.forEach(function (u) {
+      html += '<div class="srow"><div style="width:120px;-webkit-flex-shrink:0;flex-shrink:0;font-weight:700">' + shortDay(u.day) + '</div><div class="grow">' + esc(u.title) +
+        (u.recurring ? '<small>Repeats — counts down to the next one</small>' : '') + '</div>' + swHTML(countdownOn(u.key), 'cdset', ' data-key="' + esc(u.key) + '"') + '</div>';
+    });
+    return html;
+  };
+  ACT.cdset = function (el) {
+    var key = attr(el, 'key'), u = null, on = el.className.indexOf(' on') < 0;
+    upcomingList.forEach(function (x) { if (x.key === key) u = x; });
+    if (!u) return;
+    var cds = (S.countdowns || []).filter(function (c) { return c.key !== key; });
+    var off = (S.countdownOff || []).filter(function (k) { return k !== key; });
+    var item = { key: key, title: u.title, day: u.day, start: u.start };
+    if (on) cds.push(item); else if (u.tagged) off.push(key);
+    B.countdowns = B.countdowns.filter(function (c) { return c.key !== key; });
+    if (on) { B.countdowns.push(item); B.countdowns.sort(function (a, b) { return a.day < b.day ? -1 : a.day > b.day ? 1 : 0; }); }
+    saveSettings({ countdowns: cds, countdownOff: off });
+    renderSettings();
+  };
+
+  // ---------- Photos ----------
+  PANES.photos = function () {
+    var html = '<h2>Photos</h2><p class="lead">Photos show while the board is asleep (tap <b>Sleep</b> in the bottom bar). ' +
+      'They’re stored on this iPad only, up to 20. To add some, first AirDrop them to the iPad, then tap Add photos.</p>';
+    html += '<div><label for="filePick" class="btn pri">Add photos</label> <span class="muted" style="margin-left:10px">' + PHOTOS.length + ' of 20' +
+      (PHOTOS.length >= 20 ? ' · new photos replace the oldest' : '') + '</span></div>';
+    html += '<div class="thumbs">' + PHOTOS.map(function (p) {
+      return '<div class="thumb"><img src="' + p.thumb + '" alt=""><span class="x" data-act="photodel" data-id="' + p.id + '">×</span></div>';
+    }).join('') + '</div>';
+    html += '<h3>Change photo every</h3>' + seg(S.photoMinutes, 'photomin', [[1, '1 min'], [2, '2 min'], [5, '5 min'], [10, '10 min']]);
+    html += '<h3>Dot size</h3>' + seg(S.dotSize, 'dotsize', [['fine', 'Fine'], ['medium', 'Medium'], ['bold', 'Bold']]) +
+      '<div class="dpreview"><canvas id="dotPrev"></canvas></div>';
+    html += '<h3>While asleep at night</h3>' + seg(S.sleepNight, 'sleepnight', [['dark', 'Go dark until sunrise'], ['photos', 'Keep showing photos']]);
+    return html;
+  };
+  ACT.photomin = function (el) { saveSettings({ photoMinutes: +attr(el, 'v') }); renderSettings(); };
+  ACT.dotsize = function (el) { saveSettings({ dotSize: attr(el, 'v') }); renderSettings(); };
+  ACT.sleepnight = function (el) { saveSettings({ sleepNight: attr(el, 'v') }); renderSettings(); };
+  ACT.photodel = function (el) { photoRemove(+attr(el, 'id'), function () { renderSettings(); }); };
+
+  // ---------- Display ----------
+  var geoResults = null;
+  PANES.display = function () {
+    var html = '<h2>Display</h2>';
+    html += '<div class="fld" style="max-width:480px"><label>Board name</label><input class="inp" maxlength="40" value="' + esc(S.name) + '" data-change="bname" autocomplete="off"></div>';
+    html += '<h3>Go back to the home view after</h3>' + seg(S.homeMinutes, 'homemin', [[1, '1 min'], [3, '3 min'], [5, '5 min'], [10, '10 min']]);
+    html += '<h3>Location (for weather, sunrise and sunset)</h3><p class="lead">Now: <b>' + esc(S.place || '') + '</b></p>' +
+      '<div class="two" style="max-width:520px"><input class="inp" id="geoQ" placeholder="City or town" autocomplete="off">' +
+      '<div style="-webkit-flex:none;flex:none"><button class="btn pri" data-act="geosearch">Search</button></div></div>';
+    if (geoResults) {
+      html += geoResults.length ? geoResults.map(function (r, i) {
+        return '<div class="srow" data-act="geopick" data-i="' + i + '"><div class="grow">' + esc(r.name) + '</div><span class="btn sm">Use this</span></div>';
+      }).join('') : '<p class="lead">No places found.</p>';
+    }
+    var st = sunTimes(todayKey());
+    if (st.rise) html += '<p class="lead" style="margin-top:8px">Night mode today: ' + hm(st.set) + ' to ' + hm(sunTimes(addDays(todayKey(), 1)).rise) + '.</p>';
+    html += '<h3>Temperature</h3>' + seg(S.unit, 'unit', [['fahrenheit', '°F'], ['celsius', '°C']]);
+    html += '<h3>Settings passcode</h3>';
+    html += S.passcode ? '<p class="lead">On. Settings asks for the 4-digit code.</p><button class="btn" data-act="pcoff">Turn off passcode</button>' :
+      '<p class="lead">Off. Anyone can open Settings by holding the page dots.</p><div class="two" style="max-width:360px"><input class="inp" id="pcNew" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="4 digits" autocomplete="off">' +
+      '<div style="-webkit-flex:none;flex:none"><button class="btn pri" data-act="pcset">Set</button></div></div>';
+    html += '<h3>This iPad</h3><p class="lead">For the screen to stay on: iPad Settings → Display &amp; Brightness → Auto-Lock → Never, and ' +
+      'Accessibility → Guided Access → Display Auto-Lock → Never.</p>' +
+      '<button class="btn" data-act="reloadapp">Reload the board</button> <button class="btn" data-act="disconnect">Disconnect this iPad</button>';
+    return html;
+  };
+  CHG.bname = function (el) { saveSettings({ name: el.value.substr(0, 40) || 'InkBoard' }); };
+  ACT.homemin = function (el) { saveSettings({ homeMinutes: +attr(el, 'v') }); renderSettings(); };
+  ACT.unit = function (el) { saveSettings({ unit: attr(el, 'v') }); renderSettings(); };
+  ACT.geosearch = function () {
+    var q = val('geoQ');
+    if (q.length < 2) { toast('Type a city name.'); return; }
+    api('geocode', [q], function (r) { geoResults = r; renderSettings(); }, function (e) { toast(e === 'offline' ? 'Could not search. Check Wi-Fi.' : e); });
+  };
+  ACT.geopick = function (el) {
+    var r = geoResults[+attr(el, 'i')];
+    geoResults = null; sunCache = {};
+    saveSettings({ lat: r.lat, lon: r.lon, place: r.name }); renderSettings();
+    toast('Location set to ' + r.name);
+  };
+  ACT.pcset = function () {
+    var p = val('pcNew');
+    if (!/^\d{4}$/.test(p)) { toast('Use exactly 4 digits.'); return; }
+    saveSettings({ passcode: p }); renderSettings(); toast('Passcode set.');
+  };
+  ACT.pcoff = function () { saveSettings({ passcode: '' }); renderSettings(); };
+  ACT.reloadapp = function () { location.reload(); };
+  ACT.disconnect = function (el) {
+    twice(el, 'Tap again to disconnect', function () {
+      store('cfg', {}); store('board', null); CFG = {}; hideSettings(); showSetup('Disconnected.');
+    });
+  };
+
+  // ---------- passcode keypad ----------
+  var pcEntry = '';
+  function askPasscode() {
+    pcEntry = '';
+    var keys = '';
+    ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].forEach(function (k) {
+      keys += k ? '<button class="k" data-act="pk" data-d="' + k + '">' + k + '</button>' : '<span style="display:inline-block;width:86px"></span>';
+      if (k === '3' || k === '6' || k === '9') keys += '<br>';
+    });
+    openSheet('Settings passcode', '<div class="keypad"><div class="digits" id="pcDigits"></div>' + keys + '</div>');
+  }
+  ACT.pk = function (el) {
+    var d = attr(el, 'd');
+    if (d === '⌫') pcEntry = pcEntry.slice(0, -1); else if (pcEntry.length < 4) pcEntry += d;
+    $('pcDigits').textContent = new Array(pcEntry.length + 1).join('●');
+    if (pcEntry.length === 4) {
+      if (pcEntry === S.passcode) { closeSheet(); showSettings(); }
+      else { pcEntry = ''; setTimeout(function () { if ($('pcDigits')) $('pcDigits').textContent = 'Try again'; }, 150); }
+    }
+  };
+
+  // ================================================================
+  //  PHOTOS (stored on this iPad only, up to 20)
+  // ================================================================
+  var PHOTOS = [], db = null, MAX_PHOTOS = 20;
+  function openDB(cb) {
+    if (db) { cb(db); return; }
+    try {
+      var rq = indexedDB.open('inkboard', 1);
+      rq.onupgradeneeded = function () { rq.result.createObjectStore('photos', { keyPath: 'id' }); };
+      rq.onsuccess = function () { db = rq.result; cb(db); };
+      rq.onerror = function () { cb(null); };
+    } catch (e) { cb(null); }
+  }
+  function loadPhotos(cb) {
+    openDB(function (d) {
+      if (!d) { if (cb) cb(); return; }
+      var out = [], rq = d.transaction('photos', 'readonly').objectStore('photos').openCursor();
+      rq.onsuccess = function () {
+        var c = rq.result;
+        if (c) { out.push(c.value); c['continue'](); }
+        else { out.sort(function (a, b) { return a.id - b.id; }); PHOTOS = out; if (cb) cb(); }
+      };
+      rq.onerror = function () { if (cb) cb(); };
+    });
+  }
+  function photoPut(p, cb) {
+    openDB(function (d) {
+      if (!d) { toast('This iPad can’t store photos.'); return; }
+      var tx = d.transaction('photos', 'readwrite');
+      tx.objectStore('photos').put(p);
+      tx.oncomplete = function () { if (cb) cb(); };
+      tx.onerror = function () { toast('Not enough space to store that photo.'); };
+    });
+  }
+  function photoRemove(id, cb) {
+    openDB(function (d) {
+      if (!d) return;
+      var tx = d.transaction('photos', 'readwrite');
+      tx.objectStore('photos')['delete'](id);
+      tx.oncomplete = function () { PHOTOS = PHOTOS.filter(function (p) { return p.id !== id; }); if (cb) cb(); };
+    });
+  }
+
+  // Old iPads (iOS 12) don't turn photos upright by themselves; newer ones do.
+  var AUTO_ORIENT = (function () { try { return getComputedStyle(document.documentElement).imageOrientation === 'from-image'; } catch (e) { return false; } })();
+  function exifOrientation(buf) {
+    try {
+      var v = new DataView(buf);
+      if (v.getUint16(0) !== 0xFFD8) return 1;
+      var off = 2;
+      while (off < v.byteLength) {
+        var marker = v.getUint16(off);
+        if (marker === 0xFFE1) {
+          if (v.getUint32(off + 4) !== 0x45786966) return 1;
+          var t = off + 10, little = v.getUint16(t) === 0x4949;
+          var ifd = t + v.getUint32(t + 4, little), n = v.getUint16(ifd, little);
+          for (var i = 0; i < n; i++) {
+            var e = ifd + 2 + i * 12;
+            if (v.getUint16(e, little) === 0x0112) return v.getUint16(e + 8, little);
+          }
+          return 1;
+        }
+        if ((marker & 0xFF00) !== 0xFF00) return 1;
+        off += 2 + v.getUint16(off + 2);
+      }
+    } catch (e) {}
+    return 1;
+  }
+  function scaled(img, maxSide, orient, quality) {
+    var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    var k = Math.min(1, maxSide / Math.max(w, h));
+    var cw = Math.round(w * k), ch = Math.round(h * k), rot = !AUTO_ORIENT && orient >= 5;
+    var c = document.createElement('canvas');
+    c.width = rot ? ch : cw; c.height = rot ? cw : ch;
+    var g = c.getContext('2d');
+    if (!AUTO_ORIENT) {
+      if (orient === 3) { g.translate(cw, ch); g.rotate(Math.PI); }
+      else if (orient === 6) { g.translate(ch, 0); g.rotate(Math.PI / 2); }
+      else if (orient === 8) { g.translate(0, cw); g.rotate(-Math.PI / 2); }
+    }
+    g.drawImage(img, 0, 0, cw, ch);
+    return c.toDataURL('image/jpeg', quality);
+  }
+  function photoAddFiles(files) {
+    var list = [];
+    for (var i = 0; i < files.length; i++) list.push(files[i]);
+    list = list.slice(0, MAX_PHOTOS);
+    if (!list.length) return;
+    toast('Adding ' + list.length + ' photo' + (list.length > 1 ? 's' : '') + '…');
+    var added = 0;
+    (function next() {
+      if (!list.length) {
+        var extra = PHOTOS.length - MAX_PHOTOS;
+        var finish = function () { toast(added + ' photo' + (added === 1 ? '' : 's') + ' added.'); if (settingsOpen) renderSettings(); };
+        if (extra > 0) {
+          var old = PHOTOS.slice(0, extra), left = old.length;
+          old.forEach(function (p) { photoRemove(p.id, function () { if (--left === 0) finish(); }); });
+        } else finish();
+        return;
+      }
+      var f = list.shift(), rd = new FileReader();
+      rd.onload = function () {
+        var orient = exifOrientation(rd.result);
+        var url = URL.createObjectURL(f), img = new Image();
+        img.onload = function () {
+          var p = { id: Date.now() + added, data: scaled(img, 1400, orient, 0.82), thumb: scaled(img, 280, orient, 0.7) };
+          URL.revokeObjectURL(url);
+          PHOTOS.push(p); added++;
+          photoPut(p, next);
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); toast('One photo could not be read.'); next(); };
+        img.src = url;
+      };
+      rd.onerror = next;
+      rd.readAsArrayBuffer(f);
+    })();
+  }
+  $('filePick').addEventListener('change', function () { photoAddFiles(this.files); this.value = ''; });
+
+  // 1-bit "dithered" drawing: Atkinson dithering, scaled up with hard pixels.
+  var DOT = { fine: 1, medium: 2, bold: 3 };
+  function drawDithered(canvas, src, W, H, dotName, cb) {
+    var img = new Image();
+    img.onload = function () {
+      var dot = DOT[dotName] || 2, w = Math.max(1, Math.floor(W / dot)), h = Math.max(1, Math.floor(H / dot));
+      canvas.width = w; canvas.height = h;
+      var g = canvas.getContext('2d');
+      var k = Math.max(w / img.width, h / img.height), dw = img.width * k, dh = img.height * k;
+      g.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+      var id = g.getImageData(0, 0, w, h), d = id.data, n = w * h, lum = new Float32Array(n), i;
+      for (i = 0; i < n; i++) lum[i] = d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114;
+      for (var y = 0; y < h; y++) {
+        for (var x = 0; x < w; x++) {
+          i = y * w + x;
+          var o = lum[i], nv = o < 128 ? 0 : 255, err = (o - nv) / 8;
+          lum[i] = nv;
+          if (x + 1 < w) lum[i + 1] += err;
+          if (x + 2 < w) lum[i + 2] += err;
+          if (y + 1 < h) { if (x > 0) lum[i + w - 1] += err; lum[i + w] += err; if (x + 1 < w) lum[i + w + 1] += err; }
+          if (y + 2 < h) lum[i + 2 * w] += err;
+        }
+      }
+      for (i = 0; i < n; i++) { var c = lum[i] < 128 ? 0 : 255; d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = c; d[i * 4 + 3] = 255; }
+      g.putImageData(id, 0, 0);
+      canvas.style.width = (w * dot) + 'px'; canvas.style.height = (h * dot) + 'px';
+      canvas.style.marginLeft = (-w * dot / 2) + 'px'; canvas.style.marginTop = (-h * dot / 2) + 'px';
+      if (cb) cb();
+    };
+    img.src = src;
+  }
+  var SAMPLE = null;
+  function sampleImage() {
+    if (SAMPLE) return SAMPLE;
+    var c = document.createElement('canvas'); c.width = 320; c.height = 200;
+    var g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 320, 200);
+    gr.addColorStop(0, '#fff'); gr.addColorStop(1, '#000');
+    g.fillStyle = gr; g.fillRect(0, 0, 320, 200);
+    g.fillStyle = '#222'; g.beginPath(); g.arc(110, 100, 60, 0, 7); g.fill();
+    g.fillStyle = '#ddd'; g.beginPath(); g.arc(230, 90, 40, 0, 7); g.fill();
+    SAMPLE = c.toDataURL();
+    return SAMPLE;
+  }
+  function drawDotPreview() {
+    var c = $('dotPrev'); if (!c) return;
+    drawDithered(c, PHOTOS.length ? PHOTOS[PHOTOS.length - 1].data : sampleImage(), 260, 160, S.dotSize);
+  }
+
+  // ================================================================
+  //  SLEEP TO PHOTOS
+  // ================================================================
+  var photoIdx = 0, photoTimer = null, sleepSince = 0, sleepMode = '';
+  function photoCorner() {
+    var t = timeParts(Date.now()), nx = nextEvent(shownCalIds());
+    return '<b>' + t.t + ' ' + t.a + '</b>' + (nx ? esc(nx.title) + ' · ' + (evDay(nx) === todayKey() ? '' : 'tomorrow ') + hm(nx.start) : esc(longDay(todayKey())));
+  }
+  function showPhotoIn(frame, withCorner) {
+    if (!PHOTOS.length) { frame.innerHTML = '<div class="hint" style="margin:40px">No photos yet. Add some in Settings → Photos.</div>'; frame.style.background = 'transparent'; return; }
+    var p = PHOTOS[photoIdx % PHOTOS.length];
+    frame.style.background = '#000';
+    frame.innerHTML = '<canvas></canvas>' + (withCorner ? '<div class="corner js-corner">' + photoCorner() + '</div>' : '');
+    drawDithered(frame.firstChild, p.data, frame.clientWidth || window.innerWidth, frame.clientHeight || window.innerHeight, S.dotSize);
+  }
+  function drawSleep() {
+    var el = $('sleep');
+    var mode = (isNight() && S.sleepNight === 'dark') ? 'dark' : (PHOTOS.length ? 'photos' : 'clock');
+    sleepMode = mode;
+    el.className = mode === 'dark' ? 'dark' : '';
+    if (mode === 'dark') { el.innerHTML = ''; return; }
+    if (mode === 'clock') {
+      el.innerHTML = '<div class="nclock js-nclock">' + nightClockInner() + '</div><div class="addhint">Add photos in Settings → Photos. Touch to wake.</div>';
+      return;
+    }
+    el.innerHTML = '<div class="pframe"></div>';
+    showPhotoIn(el.firstChild, true);
+  }
+  function startPhotoTimer() {
+    clearInterval(photoTimer);
+    photoTimer = setInterval(function () {
+      photoIdx++;
+      if (sleeping && sleepMode === 'photos') showPhotoIn($('sleep').firstChild, true);
+      fillPhotoViews();
+    }, Math.max(1, S ? S.photoMinutes : 2) * 60000);
+  }
+  ACT.sleep = function () {
+    if (!B) return;
+    sleeping = true; sleepSince = Date.now();
+    if (sheetOpen) closeSheet();
+    $('sleep').className = '';
+    drawSleep();
+    startPhotoTimer();
+  };
+  function wake() {
+    sleeping = false;
+    $('sleep').className = 'hide'; $('sleep').innerHTML = '';
+    lastInteraction = Date.now();
+    goView(0);
+    renderAll();
+  }
+  ACT.wake = wake;
+
+  function fillPhotoViews() {
+    var fs = document.querySelectorAll('.js-photoview');
+    for (var i = 0; i < fs.length; i++) showPhotoIn(fs[i], true);
+  }
+  afterRenderHooks.push(fillPhotoViews);
+
+  // ================================================================
+  //  FIRST-TIME CONNECT SCREEN
+  // ================================================================
+  function showSetup(msg) {
+    var el = $('setup');
+    el.className = '';
+    el.innerHTML = '<div class="box"><h1>Connect InkBoard</h1>' +
+      '<p>Paste the two things from the setup guide. You only do this once on this iPad.</p>' +
+      (msg && msg !== 'Not connected' ? '<div class="warn">' + esc(msg === 'Wrong key' ? 'That key doesn’t match. Check it and try again.' : msg) + '</div>' : '') +
+      (IN_GAS ? '' : '<div class="fld"><label>Backend link (ends in /exec)</label><input class="inp" id="suApi" value="' + esc(CFG.api || '') + '" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="https://script.google.com/macros/s/…/exec"></div>') +
+      '<div class="fld"><label>Key</label><input class="inp" id="suKey" value="' + esc(CFG.key || '') + '" autocomplete="off" autocapitalize="off" autocorrect="off"></div>' +
+      '<button class="btn pri" data-act="setupgo">Connect</button></div>';
+  }
+  ACT.setupgo = function () {
+    if (!IN_GAS) CFG.api = val('suApi');
+    CFG.key = val('suKey');
+    if (!IN_GAS && !/^https:\/\/script\.google(usercontent)?\.com\//.test(CFG.api)) { toast('The backend link should start with https://script.google.com/'); return; }
+    $('setup').innerHTML = '<div class="box"><h1>Connecting…</h1></div>';
+    api('board', [], function (d) {
+      store('cfg', CFG);
+      $('setup').className = 'hide'; $('setup').innerHTML = '';
+      B = d; S = d.settings; loadedAt = Date.now(); online = true; store('board', d);
+      renderAll(); schedulePoll(POLL_MS);
+    }, function (e) { showSetup(e === 'offline' ? 'Could not reach Google. Check the link and the Wi-Fi.' : e); });
+  };
+
+  // ================================================================
+  //  CLOCK: time, night mode, back to home, waking at sunrise, self-repair
+  // ================================================================
+  var lastMinute = -1, lastDay = todayKey();
+  function tick() {
+    var now = Date.now(), d = new Date(now);
+    if (!B) return;
+    renderTime();
+    var cs = document.querySelectorAll('.js-clock'), i;
+    for (i = 0; i < cs.length; i++) cs[i].innerHTML = clockInner();
+    var ns = document.querySelectorAll('.js-nclock');
+    for (i = 0; i < ns.length; i++) ns[i].innerHTML = nightClockInner();
+    var cn = document.querySelectorAll('.js-corner');
+    for (i = 0; i < cn.length; i++) cn[i].innerHTML = photoCorner();
+    applyBodyClass();
+
+    if (todayKey() !== lastDay) { lastDay = todayKey(); renderAll(); load(); }
+    else if (d.getMinutes() !== lastMinute) {
+      lastMinute = d.getMinutes();
+      if (lastMinute % 5 === 0 && !sheetOpen && !(sw && sw.on)) renderPages();   // fade past events
+    }
+    var idle = now - lastInteraction;
+    if (!sleeping && !sheetOpen && !settingsOpen && view !== 0 && idle > S.homeMinutes * 60000) goView(0);
+    if (sheetOpen && idle > 10 * 60000) closeSheet();
+    if (settingsOpen && idle > 15 * 60000) hideSettings();
+
+    if (sleeping) {
+      var st = sunTimes(todayKey());
+      if (st.rise && sleepSince < st.rise && now >= st.rise) wake();        // wakes at sunrise
+      else {
+        var want = (isNight() && S.sleepNight === 'dark') ? 'dark' : (PHOTOS.length ? 'photos' : 'clock');
+        if (want !== sleepMode) drawSleep();
+      }
+    }
+
+    // Self-repair: if Safari froze the page or data is very old, reload it.
+    var lastReload = +(store('reloadAt') || 0);
+    if (now - loadedAt > 30 * 60000 && now - lastReload > 30 * 60000 && navigator.onLine !== false) { store('reloadAt', now); location.reload(); }
+    if (d.getHours() === 3 && store('nightly') !== todayKey()) { store('nightly', todayKey()); store('reloadAt', now); location.reload(); }
+  }
+
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && B) load(); });
+
+  // ================================================================
+  //  START
+  // ================================================================
+  function start() {
+    var cached = store('board');
+    if (cached && cached.settings) { B = cached; S = cached.settings; loadedAt = cached.updated || 0; renderAll(); }
+    else renderBar();
+    load();
+    loadPhotos(function () { if (B) startPhotoTimer(); fillPhotoViews(); });
+    setInterval(tick, 10000);
+  }
+  fitHeight();
+  if (window.__MOCK_API) { CFG.key = CFG.key || 'test'; start(); }
+  else if (IN_GAS && !CFG.key) {
+    google.script.url.getLocation(function (loc) {
+      if (loc && loc.parameter && loc.parameter.k) { CFG.key = loc.parameter.k; store('cfg', CFG); start(); }
+      else showSetup();
+    });
+  } else if (!IN_GAS && !CFG.api) showSetup();
+  else start();
+
+  window.InkBoard = { load: load, state: function () { return { B: B, view: view, sleeping: sleeping, sheetOpen: sheetOpen, settingsOpen: settingsOpen }; } };
+})();
+</script>
+</body>
+</html>
