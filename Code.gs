@@ -18,9 +18,15 @@ var KEY = 'change-me';
 // =====================================================================
 var DEFAULTS = {
   name: 'InkBoard',
-  views: ['combo', 'calendar', 'tasks'],     // up to 3, first one is home
-  comboDesign: 'classic',                    // classic | todo | pf
-  homeMinutes: 3,
+  views: ['home', 'calendar', 'todo'],       // up to 5, first one is home
+  comboDesign: 'classic',                    // (older versions only)
+  homeMinutes: 3,                            // minutes untouched before going home / rotating
+  idleMode: 'home',                          // home | rotate | stay
+  rotateMinutes: 2,
+  homeList: '',                              // list on Home: '' = first shown list, a list id, or 'all'
+  todoLists: [],                             // up to 3 list ids for the To-do view ([] = first 3 shown)
+  nightDesign: 'big',                        // big | panel
+  cdLayout: 'fib',                           // countdown layout: fib | halves | puzzle
   unit: 'fahrenheit',
   lat: 40.7128, lon: -74.006, place: 'New York, NY',
   calendars: {},                             // google calendar id -> { show: true/false }
@@ -127,8 +133,9 @@ function saveSettings_(patch) {
     var today = todayKey_();
     s.countdowns = (s.countdowns || []).filter(function (c) { return c.day >= today; }).slice(0, 30);
     s.countdownOff = (s.countdownOff || []).slice(-60);
-    if (s.views.length > 3) s.views = s.views.slice(0, 3);
-    if (!s.views.length) s.views = ['combo'];
+    if (s.views.length > 5) s.views = s.views.slice(0, 5);
+    if (!s.views.length) s.views = ['home'];
+    s.todoLists = (s.todoLists || []).slice(0, 3);
     PropertiesService.getScriptProperties().setProperty('settings', JSON.stringify(s));
     return s;
   } finally {
@@ -551,7 +558,7 @@ function weatherData_(s) {
   var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + s.lat + '&longitude=' + s.lon +
     '&current=temperature_2m,weather_code' +
     '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
-    '&temperature_unit=' + s.unit + '&timezone=auto&forecast_days=5';
+    '&temperature_unit=' + s.unit + '&timezone=auto&forecast_days=8';
   var j = JSON.parse(UrlFetchApp.fetch(url).getContentText());
   var days = [];
   for (var i = 0; i < j.daily.time.length; i++) {

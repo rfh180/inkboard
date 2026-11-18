@@ -11,8 +11,9 @@
 <title>InkBoard</title>
 <link rel="apple-touch-icon" href="icon.png">
 <style>
-  :root { --bg: #fff; --fg: #000; --dim: #5a5a5a; --faint: #d0d0d0; --line: #000; --shade: #f1f1f1; }
-  body.night { --bg: #000; --fg: #fff; --dim: #a8a8a8; --faint: #3a3a3a; --line: #fff; --shade: #161616; }
+  :root { --past: #9a9a9a; --bg: #fff; --fg: #000; --dim: #5a5a5a; --faint: #d6d6d6; --line: #000; --shade: #f1f1f1; }
+  body.night { --past: #6a6a6a; --bg: #000; --fg: #fff; --dim: #a8a8a8; --faint: #333; --line: #fff; --shade: #161616; }
+  body.night.quiet { --fg: #cfcfcf; --dim: #7a7a7a; --faint: #2a2a2a; --line: #2a2a2a; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: rgba(0,0,0,0); }
   html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--fg); }
   body { font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; -webkit-text-size-adjust: 100%;
@@ -21,19 +22,24 @@
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; -webkit-appearance: none; }
   [data-act], [data-hold] { cursor: pointer; }
   .hide { display: none !important; }
+  svg.i { fill: none; stroke: var(--fg); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 
-  /* ---------- frame ---------- */
+  /* ---------- frame: header, pages, bottom bar ---------- */
   #app { position: absolute; left: 0; top: 0; right: 0; height: 100%; display: -webkit-flex; display: flex;
-         -webkit-flex-direction: column; flex-direction: column; padding: 12px 14px 8px; }
-  #hdr { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; border-bottom: 3px solid var(--line);
-         padding: 0 2px 8px; margin-bottom: 10px; min-height: 40px; -webkit-flex-shrink: 0; flex-shrink: 0; }
-  #hdr .nm { font-weight: 800; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; margin-right: 14px; }
-  #hdr .cds { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; -webkit-justify-content: center; justify-content: center; overflow: hidden; }
-  #hdr .cd { border: 2px solid var(--line); border-radius: 18px; padding: 3px 12px; font-size: 16px; font-weight: 700; margin: 0 4px; white-space: nowrap; }
-  #hdr .cd b { font-weight: 800; }
-  #hdr .cd.today { background: var(--fg); color: var(--bg); }
-  #hdr .tm { font-size: 22px; font-weight: 800; white-space: nowrap; margin-left: 14px; font-variant-numeric: tabular-nums; }
-  #hdr .tm small { font-size: 14px; margin-left: 2px; }
+         -webkit-flex-direction: column; flex-direction: column; padding: 12px 16px 8px; }
+  #hdr { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; border-bottom: 2px solid var(--line);
+         padding: 0 0 8px; margin-bottom: 16px; min-height: 40px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  #hdr .nm { font-weight: 800; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #hdr .hc { margin-left: auto; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; white-space: nowrap; padding-left: 14px; }
+  .hcd { position: relative; border: 2px solid var(--fg); border-radius: 8px; padding: 4px 10px; font-size: 15px; font-weight: 800; white-space: nowrap; }
+  .hcd.today { background: var(--fg); color: var(--bg); }
+  .htime { font-size: 24px; font-weight: 800; margin-left: 16px; font-variant-numeric: tabular-nums; }
+  .htime small { font-size: 15px; margin-left: 2px; }
+  .hwx { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; font-size: 18px; }
+  .hwx svg { width: 28px; height: 28px; margin: 0 8px; }
+  .hwx b { font-size: 24px; margin-right: 6px; }
+  .hwx .lab { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: var(--dim); }
+  .hwx .dim { color: var(--dim); margin-right: 6px; }
 
   #pager { -webkit-flex: 1; flex: 1; position: relative; overflow: hidden; min-height: 0; }
   #track { position: absolute; left: 0; top: 0; bottom: 0; display: -webkit-flex; display: flex; -webkit-transition: -webkit-transform .3s ease; transition: transform .3s ease; }
@@ -41,258 +47,387 @@
   .page { height: 100%; overflow: hidden; position: relative; }
   .page > .inner { height: 100%; }
 
-  #bar { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; border-top: 3px solid var(--line);
-         padding-top: 8px; margin-top: 10px; min-height: 52px; -webkit-flex-shrink: 0; flex-shrink: 0; }
-  #bar .side { width: 30%; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+  #bar { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; border-top: 2px solid var(--line);
+         padding-top: 8px; margin-top: 8px; min-height: 52px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  #bar .side { -webkit-flex: 1; flex: 1; width: 0; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
   #bar .side.r { -webkit-justify-content: flex-end; justify-content: flex-end; }
-  #bar .upd { color: var(--dim); font-size: 14px; margin-right: 12px; white-space: nowrap; }
+  #bar .upd { color: var(--dim); font-size: 15px; margin-right: 12px; white-space: nowrap; }
   #bar .upd.off { color: var(--fg); font-weight: 700; }
-  #dots { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; -webkit-justify-content: center; justify-content: center;
-          -webkit-align-items: center; align-items: center; height: 44px; position: relative; }
-  #dots .dot { width: 44px; height: 44px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
-  #dots .dot i { display: block; width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--fg); }
+  #dots { -webkit-flex: none; flex: none; display: -webkit-flex; display: flex; -webkit-justify-content: center; justify-content: center;
+          -webkit-align-items: center; align-items: center; height: 44px; position: relative; padding: 0 6px; }
+  #dots .dot { width: 36px; height: 44px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+  #dots .dot i { display: block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--fg); }
   #dots .dot.on i { background: var(--fg); }
   #dots .holdbar { position: absolute; left: 50%; bottom: -2px; height: 4px; width: 0; background: var(--fg); -webkit-transform: translateX(-50%); transform: translateX(-50%); }
   #dots .holdtip { position: absolute; bottom: 46px; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); background: var(--fg); color: var(--bg);
-                   padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 700; white-space: nowrap; }
-  .btn { display: inline-block; border: 2px solid var(--line); border-radius: 8px; padding: 8px 16px; font-weight: 700; font-size: 17px; line-height: 1.2; white-space: nowrap; }
-  .btn.sm { padding: 5px 11px; font-size: 15px; }
+                   padding: 6px 12px; border-radius: 8px; font-size: 15px; font-weight: 700; white-space: nowrap; }
+  .btn { display: inline-block; border: 2px solid var(--line); border-radius: 8px; padding: 10px 16px; min-height: 44px; font-weight: 700; font-size: 18px; line-height: 1.2; white-space: nowrap; }
+  .btn.sm { padding: 9px 12px; font-size: 15px; min-height: 40px; }
   .btn.pri { background: var(--fg); color: var(--bg); }
   .btn.warn { border-style: dashed; }
+  .btn.warn:not(:active) { color: var(--fg); }
   .btn:active, .btn.pressed { background: var(--fg); color: var(--bg); }
   .btn.pri:active { background: var(--bg); color: var(--fg); }
+  .pinb { display: -webkit-inline-flex; display: inline-flex; -webkit-align-items: center; align-items: center; border: 2px solid var(--line); border-radius: 8px;
+          padding: 0 12px; height: 44px; font-weight: 700; font-size: 18px; margin-right: 8px; white-space: nowrap; }
+  .pinb svg { margin-right: 6px; }
+  .pinb svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .pinb.on { background: var(--fg); color: var(--bg); }
+  .pinb.on svg { margin-right: 6px; }
+  /* quiet frame on the night clock */
+  body.quiet #bar .btn, body.quiet .pinb { border-color: var(--faint); color: var(--dim); }
+  body.quiet #bar .upd { visibility: hidden; }
 
-  /* ---------- layout pieces ---------- */
-  .row { display: -webkit-flex; display: flex; height: 100%; }
-  .colm { display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; min-width: 0; min-height: 0; }
-  .colm + .colm { margin-left: 14px; }
+  /* ---------- shared pieces ---------- */
+  .vflex { display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; height: 100%; }
   .grow { -webkit-flex: 1; flex: 1; min-height: 0; }
-  .panel { border: 3px solid var(--line); border-radius: 10px; overflow: hidden; display: -webkit-flex; display: flex;
-           -webkit-flex-direction: column; flex-direction: column; min-height: 0; -webkit-flex-shrink: 0; flex-shrink: 0; }
-  .panel + .panel, .clock + .panel { margin-top: 12px; }
-  .panel.grow { -webkit-flex: 1; flex: 1; -webkit-flex-shrink: 1; flex-shrink: 1; }
-  .tbar { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; background: var(--fg); color: var(--bg);
-          padding: 6px 8px 6px 12px; font-size: 16px; min-height: 42px; -webkit-flex-shrink: 0; flex-shrink: 0; }
-  .tbar b { text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tbar .sub { -webkit-flex: 1; flex: 1; margin-left: 10px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tbar .add { border: 2px solid var(--bg); border-radius: 7px; padding: 4px 12px; font-weight: 700; margin-left: 8px; white-space: nowrap; }
-  .tbar .add:active { background: var(--bg); color: var(--fg); }
-  .pbody { padding: 8px 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; -webkit-flex: 1; flex: 1; }
   .muted { color: var(--dim); }
-  .none { color: var(--dim); font-size: 16px; padding: 6px 0; }
-  .warn { border: 2px dashed var(--line); border-radius: 6px; padding: 5px 10px; margin-bottom: 8px; font-weight: 700; font-size: 15px; }
-  .hint { border: 2px dashed var(--faint); border-radius: 10px; padding: 18px; color: var(--dim); font-size: 17px; text-align: center; margin: 10px 0; }
+  .none { color: var(--dim); font-size: 15px; padding: 6px 0; }
+  .warn { border: 2px dashed var(--line); border-radius: 8px; padding: 5px 10px; margin-bottom: 8px; font-weight: 700; font-size: 15px; }
+  .hint { border: 2px dashed var(--faint); border-radius: 10px; padding: 18px; color: var(--dim); font-size: 18px; text-align: center; margin: 10px 0; }
+  .panel { border: 2px solid var(--line); border-radius: 10px; overflow: hidden; display: -webkit-flex; display: flex;
+           -webkit-flex-direction: column; flex-direction: column; min-height: 0; }
+  .panel.grow { -webkit-flex: 1; flex: 1; }
+  .tbar { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; background: var(--fg); color: var(--bg);
+          padding: 6px 8px 6px 12px; font-size: 15px; min-height: 44px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  body.night .tbar { background: none; color: var(--fg); border-bottom: 2px solid var(--line); }
+  .tbar b { text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tbar .cnt { border: 1px solid var(--bg); border-radius: 4px; padding: 0 6px; font-size: 12px; font-weight: 800; margin-left: 8px; }
+  body.night .tbar .cnt, body.night .tbar .add { border-color: var(--fg); }
+  .tbar .sp { -webkit-flex: 1; flex: 1; }
+  .tbar .add { border: 2px solid var(--bg); border-radius: 8px; padding: 0 12px; height: 32px; line-height: 28px; font-weight: 700; margin-left: 8px; white-space: nowrap; font-size: 15px; position: relative; }
+  .tbar .add:after, .hcd:after, .nxl > span[data-act]:after { content: ""; position: absolute; left: -4px; right: -4px; top: -6px; bottom: -6px; }
+  .nxl > span[data-act] { position: relative; }
+  .tbar .add:active { background: var(--bg); color: var(--fg); }
+  .pbody { padding: 6px 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; -webkit-flex: 1; flex: 1; }
+  .fit { overflow: hidden !important; position: relative; }
+  .fmore { font-size: 15px; color: var(--dim); font-weight: 700; padding: 6px 0 2px; }
 
-  /* clock */
-  .clock { -webkit-flex-shrink: 0; flex-shrink: 0; padding: 0 2px; }
-  .clock .t { font-size: 92px; font-weight: 800; line-height: .95; letter-spacing: -3px; font-variant-numeric: tabular-nums; }
-  .clock .t small { font-size: 30px; letter-spacing: 0; margin-left: 6px; font-weight: 700; }
-  .clock .d { font-size: 23px; font-weight: 600; margin-top: 6px; }
-  .clock.sm .t { font-size: 56px; letter-spacing: -2px; } .clock.sm .t small { font-size: 22px; } .clock.sm .d { font-size: 19px; }
+  /* top strip (Home, To-do, Personal + Family) */
+  .strip { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; border: 2px solid var(--line); border-radius: 10px;
+           padding: 8px 16px; margin-bottom: 16px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .strip .st-t { font-size: 64px; font-weight: 800; letter-spacing: -2px; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .strip .st-t small { font-size: 24px; letter-spacing: 0; margin-left: 4px; }
+  .strip .st-mid { margin-left: 22px; padding-left: 22px; border-left: 1px solid var(--faint); min-width: 0; -webkit-flex: 1; flex: 1; }
+  .strip .st-d { font-size: 24px; font-weight: 700; white-space: nowrap; }
+  .nxl { font-size: 18px; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nxl b { font-size: 12px; letter-spacing: 1px; margin-right: 8px; text-transform: uppercase; }
+  .nxl strong { font-weight: 700; margin-right: 10px; }
+  .nxl i { font-style: normal; font-size: 15px; font-weight: 700; border: 1px solid var(--fg); border-radius: 4px; padding: 0 6px; white-space: nowrap; }
+  .strip .st-w { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; margin-left: 12px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .strip .st-w svg { width: 40px; height: 40px; }
+  .strip .st-w .tmp { font-size: 34px; font-weight: 800; margin-left: 8px; line-height: 1; }
+  .strip .st-w .tx { font-size: 15px; margin-left: 10px; line-height: 1.3; white-space: nowrap; }
 
-  /* agenda */
-  .day { margin-bottom: 10px; }
-  .day h3 { margin: 0 0 3px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid var(--line); padding-bottom: 3px; }
-  .day.today h3 { font-size: 17px; }
-  .ev { display: -webkit-flex; display: flex; -webkit-align-items: baseline; align-items: baseline; padding: 6px 0; font-size: 19px; }
-  .ev .t { width: 86px; -webkit-flex-shrink: 0; flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .ev .t small { font-size: 13px; font-weight: 600; margin-left: 1px; }
-  .ev .m { width: 20px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  /* agenda rows */
+  .dh3 { margin: 4px 0 3px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--line); padding-bottom: 3px; }
+  .dh3.today { font-size: 15px; }
+  .ev { display: -webkit-flex; display: flex; -webkit-align-items: baseline; align-items: baseline; padding: 5px 0; font-size: 18px; }
+  .ev .t { width: 76px; -webkit-flex-shrink: 0; flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+  
   .ev .x { -webkit-flex: 1; flex: 1; min-width: 0; }
-  .ev .loc { display: block; font-size: 14px; color: var(--dim); }
+  .ev .loc { display: block; font-size: 12px; color: var(--dim); }
   .ev.past { opacity: .45; }
   .ev.now .x { font-weight: 800; }
-  .ev .cdmark { font-size: 12px; font-weight: 800; border: 2px solid var(--fg); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; }
-  .mk { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--fg); vertical-align: 0; }
-  .mk0 { background: var(--fg); border-radius: 50%; } .mk1 { border-radius: 50%; } .mk2 { background: var(--fg); } .mk3 { }
-  .mk4 { background: var(--fg); -webkit-transform: rotate(45deg) scale(.85); transform: rotate(45deg) scale(.85); }
-  .mk5 { -webkit-transform: rotate(45deg) scale(.85); transform: rotate(45deg) scale(.85); }
-  .key { font-size: 14px; color: var(--dim); padding: 6px 2px 0; -webkit-flex-shrink: 0; flex-shrink: 0; }
-  .key span { margin-right: 14px; white-space: nowrap; } .key .mk { margin-right: 5px; }
+  .ev.earlier { color: var(--dim); font-size: 15px; font-weight: 700; }
+  .cdmark { font-size: 12px; font-weight: 800; border: 1px solid var(--fg); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; }
 
   /* tasks */
-  .task { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 9px 0; font-size: 20px; border-bottom: 1px solid var(--faint); }
+  .task { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; min-height: 44px; padding: 6px 0; font-size: 18px; border-bottom: 1px solid var(--faint); }
   .task:last-child { border-bottom: 0; }
-  .task .bx { width: 30px; height: 30px; border: 3px solid var(--fg); border-radius: 6px; margin-right: 12px; -webkit-flex-shrink: 0; flex-shrink: 0; position: relative; }
+  .task .bx { width: 28px; height: 28px; border: 2px solid var(--fg); border-radius: 4px; margin-right: 12px; -webkit-flex-shrink: 0; flex-shrink: 0; position: relative; }
   .task.done .bx { background: var(--fg); }
   .task.done .bx:after { content: ""; position: absolute; left: 8px; top: 2px; width: 7px; height: 14px; border: solid var(--bg); border-width: 0 3px 3px 0;
                          -webkit-transform: rotate(45deg); transform: rotate(45deg); }
   .task .tt { -webkit-flex: 1; flex: 1; min-width: 0; word-wrap: break-word; }
+  .task .tl { display: block; font-size: 12px; font-weight: 800; letter-spacing: 1px; color: var(--dim); text-transform: uppercase; }
   .task.done .tt { text-decoration: line-through; color: var(--dim); }
-  .task .due { font-size: 13px; font-weight: 700; border: 2px solid var(--fg); border-radius: 4px; padding: 0 5px; margin-left: 8px; white-space: nowrap; }
+  .task .due { font-size: 12px; font-weight: 700; border: 1px solid var(--fg); border-radius: 4px; padding: 0 5px; margin-left: 8px; white-space: nowrap; }
   .task .due.late { background: var(--fg); color: var(--bg); }
   .task.busy { opacity: .5; }
   .task.held { background: var(--shade); }
+  .small .task { font-size: 15px; padding: 4px 0; }
+  .small .task .bx { width: 22px; height: 22px; border-radius: 4px; margin-right: 10px; }
+  .small .task.done .bx:after { left: 6px; top: 1px; width: 5px; height: 11px; border-width: 0 2px 2px 0; }
+  .small .task .due { font-size: 12px; }
 
-  /* weather */
-  .wx { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
-  .wx .ic { width: 60px; height: 60px; margin-right: 10px; -webkit-flex-shrink: 0; flex-shrink: 0; }
-  .wx .tmp { font-size: 54px; font-weight: 800; line-height: 1; }
-  .wx .tx { font-size: 17px; font-weight: 600; margin-left: 12px; }
-  .wxd { display: -webkit-flex; display: flex; margin-top: 8px; border-top: 2px solid var(--line); padding-top: 6px; }
-  .wxd > div { -webkit-flex: 1; flex: 1; text-align: center; font-size: 15px; }
-  .wxd b { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
-  .wxd svg { width: 28px; height: 28px; display: block; margin: 2px auto; }
-  svg.i { fill: none; stroke: var(--fg); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  /* Home */
+  .hrow { display: -webkit-flex; display: flex; -webkit-flex: 1; flex: 1; min-height: 0; }
+  .hrow > * { -webkit-flex: 1; flex: 1; min-width: 0; }
+  .hrow > * + * { margin-left: 16px; }
+  .fc { display: -webkit-flex; display: flex; border: 2px solid var(--line); border-radius: 10px; margin-top: 16px; padding: 8px 4px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .fc > div { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; font-size: 15px; white-space: nowrap; }
+  .fc b { font-size: 12px; letter-spacing: 1px; }
+  .fc svg { width: 22px; height: 22px; margin: 0 5px; }
+  .fc .lo { color: var(--dim); margin-left: 3px; }
 
-  /* calendar columns, week, month */
-  .cols { display: -webkit-flex; display: flex; height: 100%; }
-  .dcol { -webkit-flex: 1; flex: 1; min-width: 0; border: 3px solid var(--line); border-radius: 10px; display: -webkit-flex; display: flex;
-          -webkit-flex-direction: column; flex-direction: column; overflow: hidden; }
-  .dcol + .dcol { margin-left: 10px; }
-  .dcol .dh { background: var(--bg); border-bottom: 3px solid var(--line); padding: 6px 10px; font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; }
-  .dcol .dh span { display: block; font-size: 26px; letter-spacing: 0; }
-  .dcol.today .dh { background: var(--fg); color: var(--bg); }
-  .dcol .pbody { padding: 6px 8px; }
-  .cev { border-left: 4px solid var(--fg); padding: 3px 0 3px 7px; margin-bottom: 8px; font-size: 16px; }
-  .cev .ct { font-weight: 800; font-size: 14px; display: block; }
-  .cev .loc { display: block; font-size: 13px; color: var(--dim); }
-  .cev.allday { border: 2px solid var(--fg); border-radius: 6px; padding: 3px 7px; font-weight: 700; }
-  .cev.past { opacity: .45; }
-  .week .dcol .dh span { font-size: 22px; }
-  .week .cev { font-size: 14px; } .week .dcol + .dcol { margin-left: 6px; } .week .dcol .pbody { padding: 5px 5px; }
-  .month { display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; height: 100%; }
-  .month .mh { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
-  .mgrid { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; border: 3px solid var(--line); border-radius: 10px; overflow: hidden; }
-  .mrow { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; min-height: 0; }
-  .mrow.hd { -webkit-flex: none; flex: none; background: var(--fg); color: var(--bg); font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
-  .mrow.hd div { padding: 4px 6px; }
-  .mcell { -webkit-flex: 1; flex: 1; min-width: 0; border-right: 1px solid var(--faint); border-bottom: 1px solid var(--faint); padding: 3px 5px; overflow: hidden; font-size: 12px; }
-  .mcell .n { font-weight: 800; font-size: 15px; }
-  .mcell.other { color: var(--dim); background: var(--shade); }
-  .mcell.today .n { background: var(--fg); color: var(--bg); border-radius: 10px; padding: 0 6px; }
-  .mcell .mi { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.35; }
-
-  /* countdown cards */
-  .cards { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; height: 100%; -webkit-align-content: stretch; align-content: stretch; }
-  .card { width: calc(50% - 6px); height: calc(50% - 6px); border: 3px solid var(--line); border-radius: 14px; padding: 16px 20px; display: -webkit-flex; display: flex;
-          -webkit-flex-direction: column; flex-direction: column; -webkit-justify-content: space-between; justify-content: space-between; margin-bottom: 12px; overflow: hidden; }
-  .card:nth-child(odd) { margin-right: 12px; }
-  .card.one { width: 100%; height: 100%; margin-right: 0; }
-  .card.tall { height: 100%; margin-bottom: 0; }
-  .card .ttl { font-size: 26px; font-weight: 800; }
-  .card .dt { font-size: 17px; color: var(--dim); margin-top: 4px; }
-  .card .big { font-size: 84px; font-weight: 800; line-height: 1; letter-spacing: -2px; }
-  .card .big small { font-size: 26px; letter-spacing: 0; margin-left: 8px; }
-  .card.today { background: var(--fg); color: var(--bg); } .card.today .dt { color: var(--bg); opacity: .8; }
-
-  /* personal + family */
-  .pf { display: -webkit-flex; display: flex; height: 100%; }
+  /* Personal + Family */
+  .pf { display: -webkit-flex; display: flex; -webkit-flex: 1; flex: 1; min-height: 0; }
   .pf .side { -webkit-flex: 1; flex: 1; min-width: 0; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
-  .pf .side + .side { margin-left: 14px; padding-left: 14px; border-left: 3px solid var(--line); }
-  .pf .who { font-size: 30px; font-weight: 800; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pf .side + .side { margin-left: 16px; }
+  .pfbody { display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; overflow: hidden; }
+  .pfpart { -webkit-flex: 1; flex: 1; min-height: 0; }
+  .pfpart + .pfpart { margin-top: 6px; }
+  .pf .who-unused { font-size: 24px; font-weight: 800; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* night clock */
-  .nclock { height: 100%; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-justify-content: center; justify-content: center; text-align: center; }
-  .nclock .t { font-size: 200px; font-weight: 800; line-height: .9; letter-spacing: -8px; font-variant-numeric: tabular-nums; }
-  .nclock .t small { font-size: 50px; letter-spacing: 0; margin-left: 10px; }
-  .nclock .d { font-size: 38px; font-weight: 700; margin-top: 14px; }
-  .nclock .nx { font-size: 26px; margin-top: 26px; color: var(--dim); }
-  .nclock .nx b { color: var(--fg); }
+  /* Calendar (time grid) */
+  .tg { -webkit-flex: 1; flex: 1; min-height: 0; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
+  .tg-row { display: -webkit-flex; display: flex; }
+  .tg-row > .gut { width: 40px; -webkit-flex-shrink: 0; flex-shrink: 0; position: relative; }
+  .tg-row > .cc { -webkit-flex: 1; flex: 1; min-width: 0; border-left: 1px solid var(--faint); position: relative; }
+  .tg-row > .cc.last { border-right: 1px solid var(--faint); }
+  .tg-hd .cc { padding: 4px 8px 0; border-bottom: 2px solid var(--line); height: 52px; }
+  .tg-hd .cc .w { font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+  .tg-hd .cc .n { font-size: 24px; font-weight: 800; line-height: 1.05; }
+  .tg-hd .cc.today { background: var(--fg); color: var(--bg); border-radius: 8px 8px 0 0; }
+  body.night .tg-hd .cc.today { background: none; color: var(--fg); border: 2px solid var(--line); border-bottom-width: 2px; }
+  .tg-ad .cc { border-bottom: 1px solid var(--faint); padding: 3px 4px; min-height: 26px; }
+  .tg-ad .gut { font-size: 12px; padding-right: 6px !important; color: var(--dim); text-align: right; padding: 8px 8px 0 0; text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
+  .tg-ad .chip { font-size: 12px; font-weight: 800; border: 2px solid var(--fg); border-radius: 4px; padding: 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 16px; margin-bottom: 2px; }
+  .tg-body { -webkit-flex: 1; flex: 1; min-height: 0; }
+  .tg-body .cc { border-bottom: 1px solid var(--faint); }
+  .tg-body .cc.today { background-color: var(--shade); }
+  .tg-body .hl { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--faint); }
+  .tg-body .gut div { position: absolute; right: 8px; font-size: 12px; color: var(--dim); -webkit-transform: translateY(-50%); transform: translateY(-50%); }
+  .blk { position: absolute; z-index: 1; border: 2px solid var(--fg); border-radius: 4px; padding: 2px 6px; line-height: 1.2; overflow: hidden; background: var(--bg); min-height: 24px; }
+  .blk.tiny { padding: 0 6px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+  .blk.tiny b { font-size: 12px; line-height: 1; }
+  .blk.narrow b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .blk b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .blk span { font-size: 12px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .blk.past { color: var(--past); border-color: var(--past); }
+  .tg-body .cc.today .blk { background: var(--bg); }
+  .nowl { position: absolute; left: -1px; right: 0; height: 0; border-top: 3px solid var(--fg); z-index: 0; }
+  .nowl:before { content: ""; position: absolute; left: -5px; top: -7px; width: 11px; height: 11px; border-radius: 50%; background: var(--fg); }
+  .navrow { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; height: 56px; margin-top: 6px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .navrow > .s { -webkit-flex: 1; flex: 1; width: 0; display: -webkit-flex; display: flex; -webkit-justify-content: flex-end; justify-content: flex-end; }
+  .navrow .ab { width: 52px; height: 46px; border: 2px solid var(--line); border-radius: 8px; font-size: 32px; font-weight: 700; line-height: 38px; text-align: center; }
+  .navrow .ab:active { background: var(--fg); color: var(--bg); }
+  .navrow .rg { font-size: 18px; font-weight: 800; margin: 0 18px; min-width: 200px; text-align: center; white-space: nowrap; }
 
-  /* photos */
-  .pframe { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: #000; overflow: hidden; }
-  .pframe canvas { position: absolute; left: 50%; top: 50%; image-rendering: -webkit-optimize-contrast; image-rendering: pixelated; image-rendering: crisp-edges; }
-  .pframe .corner { position: absolute; right: 18px; bottom: 18px; background: #fff; color: #000; border: 3px solid #000; border-radius: 10px; padding: 8px 14px; font-size: 20px; font-weight: 700; max-width: 70%; }
-  .pframe .corner b { font-size: 30px; display: block; }
+  /* Countdowns */
+  .cdw { height: 100%; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+  .cdg { position: relative; }
+  .cdt { position: absolute; border: 2px solid var(--line); border-radius: 10px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column;
+         -webkit-justify-content: center; justify-content: center; -webkit-align-items: center; align-items: center; text-align: center; overflow: hidden; padding: 6px; }
+  .cdt.hero { background: var(--fg); color: var(--bg); }
+  body.night .cdt.hero { background: none; color: var(--fg); border-width: 4px; }
+  .cdt.add { border: 2px dashed var(--faint); color: var(--dim); font-weight: 700; -webkit-justify-content: center; justify-content: center; }
+  .cdt.empty { border: 2px dashed var(--faint); }
+  .cdmini { position: relative; width: 132px; height: 82px; margin: 0 auto 6px; }
+  .cdmini i { position: absolute; border: 1.5px solid var(--fg); border-radius: 3px; display: block; }
+  .cdl-row { display: -webkit-flex; display: flex; margin: 6px -6px 4px; }
+  .cdl { position: relative; -webkit-flex: 1; flex: 1; margin: 0 6px; border: 2px solid var(--faint); border-radius: 10px; padding: 10px 8px; text-align: center; }
+  .cdl.on { border-color: var(--line); border-width: 3px; padding: 9px 7px; }
+  .cdl b { display: block; font-size: 15px; } .cdl span { display: block; font-size: 12px; color: var(--dim); margin-top: 2px; }
+  .cdt .n { font-weight: 800; line-height: .85; font-variant-numeric: tabular-nums; }
+  .cdt .u { font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+  .cdt .wd { font-weight: 700; opacity: .75; }
+  .cdt .ctop { -webkit-flex: 1; flex: 1; min-height: 0; width: 100%; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-justify-content: center; justify-content: center; -webkit-align-items: center; align-items: center; }
+  .cdt .cbot { -webkit-flex: none; flex: none; width: 100%; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-justify-content: flex-end; justify-content: flex-end; -webkit-align-items: center; align-items: center; }
+  .cdt .tt { font-weight: 800; line-height: 1.2; max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; padding-bottom: 1px; }
+  .cdt .dt { opacity: .6; }
+
+  /* Month */
+  .mg { -webkit-flex: 1; flex: 1; min-height: 0; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; border-top: 2px solid var(--line); }
+  .mwh { display: -webkit-flex; display: flex; height: 26px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .mwh div { -webkit-flex: 1; flex: 1; font-size: 12px; font-weight: 800; letter-spacing: 1px; padding: 5px 8px; border-bottom: 1px solid var(--faint); }
+  .mwk { -webkit-flex: 1; flex: 1; min-height: 0; position: relative; display: -webkit-flex; display: flex; }
+  .mc { -webkit-flex: 1; flex: 1; min-width: 0; border-right: 1px solid var(--faint); border-bottom: 1px solid var(--faint); padding: 4px 6px; overflow: hidden; }
+  .mc:nth-child(7) { border-right: 0; }
+  .mc .n { font-size: 15px; font-weight: 800; height: 22px; display: -webkit-flex; display: flex; -webkit-align-items: baseline; align-items: baseline; }
+  .mc .n small { font-size: 12px; font-weight: 700; color: var(--dim); letter-spacing: .5px; margin-left: 6px; }
+  .mc.today { background: var(--shade); }
+  .mc.today .n span { background: var(--fg); color: var(--bg); border-radius: 4px; padding: 0 6px; }
+  body.night .mc.today .n span { background: none; color: var(--fg); border: 2px solid var(--line); padding: 0 5px; }
+  .mi { font-size: 12px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mi b { font-weight: 800; margin-right: 4px; }
+  .mi.more { color: var(--dim); font-weight: 700; font-size: 12px; }
+  .mbar { position: absolute; height: 18px; font-size: 12px; font-weight: 800; border: 2px solid var(--fg); border-radius: 4px; padding: 0 6px; line-height: 14px;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--bg); }
+
+  /* Night clock */
+  .nck { height: 100%; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-justify-content: center; justify-content: center; -webkit-align-items: center; align-items: center; text-align: center; }
+  .nck .t { font-size: 230px; font-weight: 800; line-height: .85; letter-spacing: -9px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .nck .t small { font-size: 56px; letter-spacing: 0; margin-left: 10px; }
+  .nck .d { font-size: 34px; font-weight: 700; margin-top: 18px; }
+  .nck .nxl { font-size: 24px; margin-top: 28px; color: var(--dim); max-width: 100%; }
+  .nck .nxl strong { color: var(--fg); font-weight: 700; }
+  .nck .nxl b { color: var(--fg); font-size: 18px; }
+  .nck .nxl i { border-color: var(--dim); font-size: 18px; margin-left: 4px; }
+  .nkp { height: 100%; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+  .nkp .l { -webkit-flex: 1.25; flex: 1.25; padding-left: 20px; min-width: 0; }
+  .nkp .t { font-size: 170px; font-weight: 800; letter-spacing: -7px; line-height: .85; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .nkp .t small { font-size: 44px; letter-spacing: 0; margin-left: 8px; }
+  .nkp .d { font-size: 34px; font-weight: 700; margin-top: 14px; }
+  .nkp .nxl { font-size: 18px; margin-top: 20px; color: var(--dim); }
+  .nkp .nxl b, .nkp .nxl strong { color: var(--fg); }
+  .nkp .r { -webkit-flex: 1; flex: 1; border-left: 2px solid var(--faint); padding-left: 32px; min-width: 0; }
+  .nkp .r h3 { margin: 0 0 8px; font-size: 15px; letter-spacing: 1px; color: var(--dim); }
+  .nkp .r .w { font-size: 18px; font-weight: 700; margin-bottom: 14px; }
+  .nkp .r .e { display: -webkit-flex; display: flex; font-size: 24px; padding: 8px 0; border-bottom: 1px solid var(--faint); }
+  .nkp .r .e b { width: 90px; -webkit-flex-shrink: 0; flex-shrink: 0; }
 
   /* ---------- overlays ---------- */
   .scrim { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,.45); z-index: 20; }
   #sheet .card2 { position: absolute; left: 50%; top: 40px; width: 600px; max-width: 94%; max-height: calc(100% - 60px); -webkit-transform: translateX(-50%); transform: translateX(-50%);
-                  background: var(--bg); color: var(--fg); border: 3px solid var(--line); border-radius: 14px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; overflow: hidden; }
-  #sheet .sh { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 12px 16px; border-bottom: 3px solid var(--line); }
-  #sheet .sh h2 { margin: 0; font-size: 22px; -webkit-flex: 1; flex: 1; min-width: 0; }
+                  background: var(--bg); color: var(--fg); border: 2px solid var(--line); border-radius: 10px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; overflow: hidden; }
+  #sheet .sh { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 12px 16px; border-bottom: 2px solid var(--line); }
+  #sheet .sh h2 { margin: 0; font-size: 24px; -webkit-flex: 1; flex: 1; min-width: 0; }
   #sheet .sb { padding: 14px 16px 18px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  #sheet .sf { padding: 12px 16px; border-top: 2px solid var(--faint); text-align: right; }
+  #sheet .sf { padding: 12px 16px; border-top: 1px solid var(--faint); text-align: right; }
   #sheet .sf .btn { margin-left: 8px; }
   #sheet .sf .left { float: left; margin-left: 0; }
+  #pinPop { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 25; }
+  #pinPop .pm { position: absolute; background: var(--bg); color: var(--fg); border: 2px solid var(--line); border-radius: 10px; padding: 12px 14px; width: 310px; }
+  #pinPop .pm h4 { margin: 0 0 4px; font-size: 15px; }
+  #pinPop .pm p { margin: 0 0 10px; font-size: 12px; color: var(--dim); }
+  #pinPop .pm .ch { display: -webkit-flex; display: flex; }
+  #pinPop .pm .ch button { -webkit-flex: 1; flex: 1; border: 2px solid var(--line); border-radius: 8px; height: 44px; padding: 0; font-weight: 800; font-size: 15px; }
+  #pinPop .pm .ch button + button { margin-left: 6px; }
   .fld { margin-bottom: 14px; }
-  .fld > label, .lbl { display: block; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
-  .inp { width: 100%; font-size: 19px; padding: 9px 11px; border: 3px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); -webkit-appearance: none; border-radius: 8px; font-family: inherit; }
-  select.inp { background-image: none; }
+  .fld > label, .lbl { display: block; font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+  .inp { width: 100%; font-size: 18px; padding: 9px 11px; border: 2px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); -webkit-appearance: none; font-family: inherit; }
+  select.inp, .bv-tile select { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9'><path d='M1 1l6 6 6-6' fill='none' stroke='black' stroke-width='2.4'/></svg>"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 38px; }
+  .bv-tile select { background-position: right 6px center; background-size: 10px 7px; padding-right: 22px; }
+  body.night select.inp { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9'><path d='M1 1l6 6 6-6' fill='none' stroke='white' stroke-width='2.4'/></svg>"); }
   .two { display: -webkit-flex; display: flex; } .two > * { -webkit-flex: 1; flex: 1; min-width: 0; } .two > * + * { margin-left: 10px; }
-  .chk { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; font-size: 19px; padding: 6px 0; }
-  .chk .bx { width: 30px; height: 30px; border: 3px solid var(--fg); border-radius: 6px; margin-right: 12px; position: relative; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .chk { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; font-size: 18px; padding: 4px 0; min-height: 44px; }
+  .chk.num .bx { color: var(--bg); } .chk.num .bx:after { display: none; }
+  .chk .bx { width: 28px; height: 28px; border: 2px solid var(--fg); border-radius: 4px; text-align: center; line-height: 24px; font-size: 15px; font-weight: 800; margin-right: 12px; position: relative; -webkit-flex-shrink: 0; flex-shrink: 0; }
   .chk.on .bx { background: var(--fg); }
   .chk.on .bx:after { content: ""; position: absolute; left: 8px; top: 2px; width: 7px; height: 14px; border: solid var(--bg); border-width: 0 3px 3px 0; -webkit-transform: rotate(45deg); transform: rotate(45deg); }
-  .sw { display: inline-block; width: 58px; height: 32px; border: 3px solid var(--fg); border-radius: 16px; position: relative; -webkit-flex-shrink: 0; flex-shrink: 0; vertical-align: middle; }
-  .sw:after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--fg); -webkit-transition: left .15s; transition: left .15s; }
-  .sw.on { background: var(--fg); } .sw.on:after { left: 29px; background: var(--bg); }
-  .info { font-size: 18px; margin-bottom: 10px; } .info .k { color: var(--dim); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; display: block; }
+  .sw { display: inline-block; width: 58px; height: 32px; border: 2px solid var(--fg); border-radius: 16px; position: relative; -webkit-flex-shrink: 0; flex-shrink: 0; vertical-align: middle; }
+  .sw:after { content: ""; position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--fg); -webkit-transition: left .15s; transition: left .15s; }
+  .sw.on { background: var(--fg); } .sw.on:after { left: 30px; background: var(--bg); }
+  .info { font-size: 18px; margin-bottom: 10px; } .info .k { color: var(--dim); font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; display: block; }
   .note { font-size: 15px; color: var(--dim); border-left: 4px solid var(--faint); padding: 4px 10px; margin: 10px 0; }
-  .confirm { border: 3px dashed var(--line); border-radius: 10px; padding: 12px; margin-top: 12px; font-weight: 700; font-size: 18px; }
+  .confirm { border: 2px dashed var(--line); border-radius: 10px; padding: 12px; margin-top: 12px; font-weight: 700; font-size: 18px; }
   .confirm .btn { margin: 8px 8px 0 0; }
 
-  /* settings */
+  /* ---------- settings ---------- */
   #settings { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: var(--bg); color: var(--fg); z-index: 15; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
-  #settings .st { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 12px 16px; border-bottom: 3px solid var(--line); }
+  #settings .st { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 12px 16px; border-bottom: 2px solid var(--line); }
   #settings .st h1 { margin: 0; font-size: 24px; -webkit-flex: 1; flex: 1; }
   #settings .sbody { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; min-height: 0; }
-  #settings .tabs { width: 220px; border-right: 3px solid var(--line); overflow-y: auto; -webkit-flex-shrink: 0; flex-shrink: 0; }
-  #settings .tab { display: block; width: 100%; text-align: left; padding: 15px 16px; font-size: 18px; font-weight: 700; border-bottom: 1px solid var(--faint); }
+  #settings .tabs { width: 208px; border-right: 2px solid var(--line); overflow-y: auto; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  #settings .tab { display: block; width: 100%; text-align: left; padding: 15px 14px; font-size: 18px; font-weight: 700; border-bottom: 1px solid var(--faint); }
   #settings .tab.on { background: var(--fg); color: var(--bg); }
-  #settings .pane { -webkit-flex: 1; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 22px 40px; min-width: 0; }
-  #settings h2 { font-size: 22px; margin: 0 0 6px; }
-  #settings h3 { font-size: 15px; text-transform: uppercase; letter-spacing: 1px; margin: 22px 0 8px; border-bottom: 2px solid var(--line); padding-bottom: 4px; }
-  #settings .lead { color: var(--dim); font-size: 16px; margin: 0 0 12px; }
+  #settings .pane { -webkit-flex: 1; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 18px 40px; min-width: 0; }
+  #settings h2 { font-size: 24px; margin: 0 0 6px; }
+  #settings h3 { font-size: 15px; text-transform: uppercase; letter-spacing: 1px; margin: 22px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  #settings .lead { color: var(--dim); font-size: 15px; margin: 0 0 12px; }
   .srow { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--faint); font-size: 18px; min-height: 56px; }
   .srow .grow { min-width: 0; }
-  .srow .grow small { display: block; color: var(--dim); font-size: 14px; }
+  .srow .grow small { display: block; color: var(--dim); font-size: 15px; }
   .srow > * + * { margin-left: 10px; }
-  .tag { font-size: 12px; font-weight: 800; border: 2px solid var(--fg); border-radius: 4px; padding: 0 5px; text-transform: uppercase; letter-spacing: 1px; margin-left: 6px; }
-  .arrow { width: 40px; height: 40px; border: 2px solid var(--line); border-radius: 8px; font-size: 18px; font-weight: 800; }
+  .tag { font-size: 12px; font-weight: 700; border: 1px solid var(--fg); border-radius: 4px; padding: 0 5px; text-transform: uppercase; letter-spacing: 1px; margin-left: 6px; }
+  .arrow { width: 44px; height: 44px; border: 2px solid var(--line); border-radius: 8px; font-size: 18px; font-weight: 800; }
   .arrow[disabled] { opacity: .25; }
-  .seg { display: inline-block; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; white-space: nowrap; }
-  .seg button { padding: 8px 14px; font-weight: 700; font-size: 16px; border-left: 2px solid var(--line); }
+  .seg { display: inline-block; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; white-space: nowrap; vertical-align: middle; }
+  .seg button { padding: 0 14px; height: 40px; font-weight: 700; font-size: 15px; border-left: 2px solid var(--line); }
   .seg button:first-child { border-left: 0; }
   .seg button.on { background: var(--fg); color: var(--bg); }
   .thumbs { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; margin: 8px -5px; }
-  .thumb { width: 130px; height: 98px; margin: 5px; border: 2px solid var(--line); border-radius: 8px; position: relative; overflow: hidden; background: #000; }
+  .thumb { width: 130px; height: 98px; margin: 5px; border: 2px solid var(--line); border-radius: 10px; position: relative; overflow: hidden; background: #000; }
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .thumb .x { position: absolute; right: 4px; top: 4px; width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #000; border: 2px solid #000; font-weight: 800; font-size: 18px; line-height: 28px; text-align: center; }
   .pfcols { display: -webkit-flex; display: flex; } .pfcols > div { -webkit-flex: 1; flex: 1; min-width: 0; } .pfcols > div + div { margin-left: 24px; }
   .dpreview canvas { position: absolute; left: 50%; top: 50%; image-rendering: -webkit-optimize-contrast; image-rendering: pixelated; image-rendering: crisp-edges; }
-  .dpreview { width: 260px; height: 160px; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; position: relative; background: #000; margin-top: 10px; }
+  .dpreview { width: 260px; height: 160px; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; position: relative; background: #000; margin-top: 10px; }
   .keypad { text-align: center; }
   .keypad .digits { font-size: 40px; letter-spacing: 16px; margin: 10px 0 16px; min-height: 48px; }
-  .keypad .k { width: 76px; height: 64px; border: 2px solid var(--line); border-radius: 10px; font-size: 26px; font-weight: 700; margin: 5px; }
+  .keypad .k { width: 76px; height: 64px; border: 2px solid var(--line); border-radius: 8px; font-size: 24px; font-weight: 700; margin: 5px; }
+  /* Board views picker */
+  .bv-lab { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: var(--dim); margin: 12px 0 7px; }
+  .bv-cnt { float: right; font-size: 15px; font-weight: 700; border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; }
+  .bv-slots { display: -webkit-flex; display: flex; }
+  .bv-slot { -webkit-flex: 1; flex: 1; width: 0; border: 2px solid var(--line); border-radius: 10px; padding: 7px 6px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; height: 52px; background: var(--bg); position: relative; }
+  .bv-slot + .bv-slot { margin-left: 6px; }
+  .bv-slot.sel { border-width: 3px; padding: 6px 5px; }
+  .bv-slot.empty { border-style: dashed; border-color: var(--faint); color: var(--dim); -webkit-justify-content: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .bv-slot.dragging { z-index: 5; box-shadow: 0 6px 18px rgba(0,0,0,.25); -webkit-transition: none; transition: none; }
+  .bv-slot.over { border-style: dashed; }
+  .bv-slot .num { width: 24px; height: 24px; -webkit-flex: none; flex: none; border-radius: 50%; background: var(--fg); color: var(--bg); font-weight: 800; font-size: 12px; text-align: center; line-height: 24px; margin-right: 6px; }
+  .bv-slot b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-flex: 1; flex: 1; min-width: 0; }
+  .bv-slot .mv button { width: 22px; height: 24px; border: 1.5px solid var(--line); border-radius: 4px; font-size: 12px; font-weight: 800; margin-left: 3px; }
+  .bv-hint { font-size: 12px; color: var(--dim); margin-top: 5px; }
+  .bv-grid { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; margin: 0 -6px; }
+  .bv-tile { width: calc(25% - 12px); margin: 0 6px 12px; border: 2px solid var(--faint); border-radius: 10px; padding: 8px; position: relative; }
+  .bv-tile.on { border-color: var(--line); border-width: 3px; padding: 7px; }
+  .bv-tile .badge, .cdl .badge { position: absolute; top: -9px; right: -9px; width: 26px; height: 26px; border-radius: 50%; background: var(--fg); color: var(--bg); font-weight: 800; font-size: 12px; text-align: center; line-height: 20px; border: 3px solid var(--bg); }
+  .bv-tile b { display: block; font-size: 15px; margin-top: 6px; }
+  .bv-tile .s { display: block; font-size: 12px; color: var(--dim); line-height: 1.3; margin-bottom: 6px; }
+  .bv-tile select { font-size: 12px; font-weight: 700; border: 1.5px solid var(--line); border-radius: 4px; padding: 4px 6px; background: var(--bg); color: var(--fg); max-width: 100%; -webkit-appearance: none; }
+  .bv-tile .seg button { padding: 0 7px; height: 28px; font-size: 12px; }
+  .mini { height: 64px; border: 1.5px solid var(--fg); border-radius: 5px; padding: 4px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; overflow: hidden; position: relative; }
+  .mini > * + * { margin-top: 3px; }
+  .mini i { display: block; background: var(--fg); border-radius: 1.5px; }
+  .mini .l { height: 3px; background: var(--fg); border-radius: 1px; } .mini .l2 { height: 3px; background: #a8a8a8; border-radius: 1px; }
+  .mini .l + .l, .mini .l + .l2, .mini .l2 + .l2, .mini .l2 + .l { margin-top: 3px; }
+  .mini .bo { border: 1.5px solid var(--fg); border-radius: 2px; }
+  .mini .rw { display: -webkit-flex; display: flex; } .mini .rw > * + * { margin-left: 3px; }
+  .bv-idle { margin-top: 6px; border-top: 2px solid var(--line); padding-top: 10px; }
+  .bv-irow { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; margin-top: 8px; font-size: 15px; font-weight: 700; }
+  .bv-irow .k { width: 140px; -webkit-flex-shrink: 0; flex-shrink: 0; }
 
-  /* sleep */
-  #sleep { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 30; background: #000; }
-  #sleep.dark { background: #000; }
-  #sleep .nclock { color: #fff; }
-  #sleep .nclock .nx { color: #aaa; } #sleep .nclock .nx b { color: #fff; }
-  #sleep .addhint { position: absolute; left: 0; right: 0; bottom: 24px; text-align: center; color: #888; font-size: 18px; }
+  /* ---------- sleep ---------- */
+  #sleep { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 30; background: var(--bg); color: var(--fg); }
+  #sleep.dim { --fg: #4a4a4a; --dim: #3a3a3a; --line: #262626; --faint: #222; background: #000; }
+  #sleep.nightsoft { --fg: #9a9a9a; --dim: #6a6a6a; --line: #2a2a2a; --faint: #222; background: #000; }
+  #sleep .sl-h { position: absolute; left: 16px; right: 16px; top: 12px; height: 48px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; border-bottom: 2px solid var(--line); padding: 0 2px 8px; }
+  #sleep .sl-h .nm { font-weight: 800; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
+  #sleep .sl-h .hwx { margin-left: auto; }
+  #sleep .sl-c { position: absolute; left: 0; right: 0; top: 74px; bottom: 84px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+  #sleep .sl-c .t { font-size: 150px; font-weight: 800; letter-spacing: -5px; line-height: 1; font-variant-numeric: tabular-nums; }
+  #sleep.dim .sl-c .t { font-size: 120px; letter-spacing: -4px; }
+  #sleep .sl-c .t small { font-size: 40px; letter-spacing: 0; margin-left: 6px; }
+  #sleep .sl-c .d { font-size: 24px; font-weight: 700; margin-top: 12px; }
+  #sleep .sl-f { position: absolute; left: 16px; right: 16px; bottom: 12px; height: 58px; border-top: 2px solid var(--line); display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; padding-top: 8px; }
+  .slp { border: 2px solid var(--line); border-radius: 8px; padding: 7px 16px; font-size: 15px; font-weight: 800; letter-spacing: 2px; white-space: nowrap; }
+  .slp span { font-weight: 400; letter-spacing: 0; opacity: .7; }
+  #sleep .sl-ph { position: absolute; left: 16px; right: 16px; top: 74px; bottom: 96px; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; background: #000; }
+  #sleep .sl-ph canvas { position: absolute; left: 50%; top: 50%; image-rendering: -webkit-optimize-contrast; image-rendering: pixelated; image-rendering: crisp-edges; }
+  #sleep.nightsoft .sl-ph canvas { opacity: .5; }
+  #sleep .sl-cap { position: absolute; left: 16px; right: 16px; bottom: 14px; height: 70px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+  #sleep .sl-cap > div { -webkit-flex: 1; flex: 1; width: 0; }
+  #sleep .sl-cap .t { font-size: 56px; font-weight: 800; letter-spacing: -2px; line-height: 1; white-space: nowrap; }
+  #sleep .sl-cap .t small { font-size: 18px; letter-spacing: 0; margin-left: 4px; }
+  #sleep .sl-cap .d { font-size: 24px; font-weight: 800; text-align: right; white-space: nowrap; }
+  #sleep .sl-cap .m { -webkit-flex: none; flex: none; width: auto; }
 
   #toast { position: fixed; left: 50%; bottom: 80px; -webkit-transform: translateX(-50%); transform: translateX(-50%); background: var(--fg); color: var(--bg);
-           padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 17px; z-index: 40; max-width: 90%; text-align: center; }
+           padding: 10px 16px; border-radius: 8px; font-weight: 700; font-size: 18px; z-index: 40; max-width: 90%; text-align: center; }
   #setup { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: #fff; color: #000; z-index: 50; overflow-y: auto; }
   #setup .box { max-width: 560px; margin: 50px auto; padding: 0 20px; }
   #setup h1 { font-size: 34px; margin: 0 0 6px; } #setup p { font-size: 18px; color: #444; }
 
-  /* portrait: stack instead of side by side */
-  body.portrait .row { -webkit-flex-direction: column; flex-direction: column; height: auto; }
+  /* ---------- portrait: stack instead of side by side ---------- */
   body.portrait .page > .inner { overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  body.portrait .colm { width: 100% !important; }
-  body.portrait .colm + .colm { margin-left: 0; margin-top: 12px; }
+  body.portrait .vflex { height: auto; min-height: 100%; }
+  body.portrait .strip { -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+  body.portrait .strip .st-w { margin: 10px 0 0; width: 100%; padding-top: 8px; border-top: 1px solid var(--faint); }
+  body.portrait .hrow, body.portrait .pf { -webkit-flex-direction: column; flex-direction: column; -webkit-flex: none; flex: none; }
+  body.portrait .hrow > * + * { margin-left: 0; margin-top: 12px; }
+  body.portrait .pf .side + .side { margin-left: 0; padding-left: 0; border-left: 0; border-top: 2px solid var(--line); padding-top: 12px; margin-top: 12px; }
   body.portrait .panel.grow { -webkit-flex: none; flex: none; }
-  body.portrait .pbody { overflow: visible; }
-  body.portrait .cols { -webkit-flex-direction: column; flex-direction: column; height: auto; }
-  body.portrait .dcol + .dcol { margin-left: 0; margin-top: 10px; }
-  body.portrait .pf { -webkit-flex-direction: column; flex-direction: column; height: auto; }
-  body.portrait .pf .side + .side { margin-left: 0; padding-left: 0; border-left: 0; border-top: 3px solid var(--line); padding-top: 12px; margin-top: 12px; }
-  body.portrait .nclock .t { font-size: 130px; }
-  body.portrait #settings .tabs { width: 150px; } body.portrait #settings .tab { font-size: 16px; padding: 13px 10px; }
+  body.portrait .pbody, body.portrait .fit { overflow: visible !important; }
+  body.portrait .tg, body.portrait .mg { min-height: 760px; }
+  body.portrait .nck .t { font-size: 150px; }
+  body.portrait .nkp { -webkit-flex-direction: column; flex-direction: column; -webkit-justify-content: center; justify-content: center; }
+  body.portrait .nkp .r { border-left: 0; padding-left: 20px; margin-top: 30px; width: 100%; }
+  body.portrait #settings .tabs { width: 140px; } body.portrait #settings .tab { font-size: 15px; padding: 13px 10px; }
+  body.portrait .bv-tile { width: calc(50% - 12px); }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="hdr"><div class="nm" id="hName">InkBoard</div><div class="cds" id="hCds"></div><div class="tm" id="hTime"></div></div>
+  <div id="hdr"><div class="nm" id="hName">InkBoard</div><div class="hc" id="hCorner"></div></div>
   <div id="pager"><div id="track"></div></div>
   <div id="bar">
     <div class="side"><button class="btn" data-act="addev">+ Event</button></div>
     <div id="dots" data-hold="settings" data-hold-ms="2000"></div>
-    <div class="side r"><span class="upd" id="upd"></span><button class="btn" data-act="sleep">Sleep</button></div>
+    <div class="side r"><span class="upd" id="upd"></span><span id="pinWrap"></span><button class="btn" data-act="sleep">Sleep</button></div>
   </div>
 </div>
 <div id="sheet" class="scrim hide" data-act="scrim"><div class="card2" id="sheetCard" data-act="noop"></div></div>
@@ -418,7 +553,7 @@
     loading = true;
     api('board', [], function (d) {
       loading = false;
-      B = d; S = d.settings; loadedAt = Date.now(); online = true;
+      B = d; S = fixSettings(d.settings); loadedAt = Date.now(); online = true;
       store('board', d);
       renderAll();
       if (settingsOpen) renderSettingsSoft();
@@ -448,7 +583,7 @@
     each(patch, function (v, k) { S[k] = v; });
     renderAll();
     api('saveSettings', [patch], function (s) {
-      B.settings = S = s;
+      B.settings = S = fixSettings(s);
       reloadSoon(600);
       if (cb) cb();
     }, function (e) { toast(e === 'offline' ? 'Could not save. Check Wi-Fi.' : e); });
@@ -460,10 +595,7 @@
   function calById(id) { for (var i = 0; i < B.calendars.length; i++) if (B.calendars[i].id === id) return B.calendars[i]; return null; }
   function shownCalIds() { var o = {}; B.calendars.forEach(function (c) { if (c.show) o[c.id] = true; }); return o; }
   function setOf(arr) { var o = {}; (arr || []).forEach(function (x) { o[x] = true; }); return o; }
-  function markerHTML(calId) {
-    var c = calById(calId);
-    return c ? '<i class="mk mk' + (c.marker % 6) + '"></i>' : '';
-  }
+  function markerHTML() { return ''; }   // one event style everywhere (calendar markers retired)
   function evDay(e) { return e.allDay ? e.startKey : keyOf(new Date(e.start)); }
   function eventsOn(k, cals) {
     var out = [];
@@ -503,7 +635,6 @@
     var n = dnOf(c.day) - dnOf(todayKey());
     if (n <= 0) return 'Today!';
     if (n === 1) return '1 day';
-    if (n > 99) return Math.round(n / 7) + ' wks';
     return n + ' days';
   }
   function liveCountdowns() { var t = todayKey(); return (B.countdowns || []).filter(function (c) { return c.day >= t; }); }
@@ -589,11 +720,13 @@
     tch = { x: t.clientX, y: t.clientY, target: e.target, moved: false, time: Date.now() };
     swipeUsed = false;
     lastInteraction = Date.now();
+    slotDragStart(e);
     var h = closest(e.target, '[data-hold]');
     if (h) holdBegin(h);
   }, { passive: true });
 
   document.addEventListener('touchmove', function (e) {
+    if (slotDragMove(e)) return;
     if (!tch) return;
     var t = e.touches[0];
     if (Math.abs(t.clientX - tch.x) > 10 || Math.abs(t.clientY - tch.y) > 10) {
@@ -604,6 +737,7 @@
 
   document.addEventListener('touchend', function (e) {
     var now = Date.now();
+    if (slotDragEnd()) { e.preventDefault(); lastTouchEnd = now; tch = null; return; }
     if (tch && tch.holdEl) holdEnd(tch.holdEl);
     if (!tch) return;
     var t = tch; tch = null;
@@ -622,7 +756,7 @@
     lastTouchEnd = now;
   }, { passive: false });
 
-  document.addEventListener('touchcancel', function () { if (tch && tch.holdEl) holdEnd(tch.holdEl); tch = null; });
+  document.addEventListener('touchcancel', function () { slotDragEnd(); if (tch && tch.holdEl) holdEnd(tch.holdEl); tch = null; });
 
   // Mouse (desktop testing)
   var mouseHoldEl = null;
@@ -676,7 +810,7 @@
     if (i !== view) { view = i; }
     $('track').className = '';
     setTrack(0);
-    renderDots();
+    if (B) { renderBar(); renderHeader(); applyBodyClass(); } else renderDots();
   }
   (function swipe() {
     var p = $('pager');
@@ -714,23 +848,50 @@
   // ================================================================
   //  DRAWING THE BOARD
   // ================================================================
+  // Old view names from earlier versions map onto the new set of views.
+  var VIEW_IDS = ['home', 'calendar', 'todo', 'countdowns', 'pf', 'month', 'nightclock'];
+  function normViews(v, combo) {
+    var map = { combo: combo === 'todo' ? 'todo' : combo === 'pf' ? 'pf' : 'home', tasks: 'todo', todofirst: 'todo', week: 'calendar', photos: null };
+    var out = [];
+    (v || []).forEach(function (id) {
+      var n = map.hasOwnProperty(id) ? map[id] : id;
+      if (n && VIEW_IDS.indexOf(n) >= 0 && out.indexOf(n) < 0) out.push(n);
+    });
+    return out.length ? out.slice(0, 5) : ['home'];
+  }
+  function fixSettings(s) {
+    s.views = normViews(s.views, s.comboDesign);
+    if (!s.idleMode) s.idleMode = 'home';
+    if (!s.rotateMinutes) s.rotateMinutes = 2;
+    if (!s.nightDesign) s.nightDesign = 'big';
+    if (!CD_LAYOUTS[s.cdLayout]) s.cdLayout = 'fib';
+    if (!s.todoLists) s.todoLists = [];
+    if (s.homeList == null) s.homeList = '';
+    return s;
+  }
+  function curViewId() { return (S && S.views[view]) || 'home'; }
+
   function applyBodyClass() {
-    var cls = (isNight() ? 'night ' : '') + (window.innerWidth < window.innerHeight ? 'portrait' : '');
+    var cls = (isNight() ? 'night ' : '') + (window.innerWidth < window.innerHeight ? 'portrait ' : '') + (S && curViewId() === 'nightclock' ? 'quiet' : '');
+    cls = cls.replace(/\s+$/, '');
     if (document.body.className !== cls) document.body.className = cls;
   }
 
+  // Header right corner: one countdown pill + small clock on most views; something else where that would repeat.
   function renderHeader() {
     $('hName').textContent = S.name || 'InkBoard';
     document.title = S.name || 'InkBoard';
-    var html = '';
-    liveCountdowns().slice(0, 3).forEach(function (c) {
-      var lbl = cdLabel(c);
-      html += '<div class="cd' + (lbl === 'Today!' ? ' today' : '') + '" data-act="cd" data-key="' + esc(c.key) + '">' + esc(c.title) + ' · <b>' + lbl + '</b></div>';
-    });
-    $('hCds').innerHTML = html;
-    renderTime();
+    var id = curViewId(), kind = (VIEWS[id] && VIEWS[id].hdr) || 'full', html = '';
+    if (id === 'nightclock' && S.nightDesign === 'panel') kind = 'none';
+    if (kind === 'full' || kind === 'strip') {
+      var c = liveCountdowns()[0];
+      if (c) { var l = cdLabel(c); html += '<span class="hcd' + (l === 'Today!' ? ' today' : '') + '" data-act="cd" data-key="' + esc(c.key) + '">' + (l === 'Today!' ? esc(c.title) + ' is today!' : l + ' · ' + esc(c.title)) + '</span>'; }
+    }
+    if (kind === 'full' || kind === 'clock') html += '<span class="htime js-htime">' + timeBig() + '</span>';
+    if (kind === 'weather') html += wxCompact();
+    $('hCorner').innerHTML = html;
   }
-  function renderTime() { var t = timeParts(Date.now()); $('hTime').innerHTML = t.t + '<small>' + t.a + '</small>'; }
+  function renderTime() { var els = document.querySelectorAll('.js-htime'); for (var i = 0; i < els.length; i++) els[i].innerHTML = timeBig(); }
 
   function renderDots() {
     var html = '';
@@ -740,16 +901,23 @@
 
   function renderBar() {
     renderDots();
-    var u = $('upd');
-    if (!loadedAt) { u.textContent = 'Loading…'; u.className = 'upd'; return; }
-    u.textContent = (online ? 'Updated ' : 'Offline · last update ') + hm(loadedAt);
-    u.className = 'upd' + (online ? '' : ' off');
+    var u = $('upd'), pinned = pinLeft() > 0;
+    if (!loadedAt) { u.textContent = 'Loading…'; u.className = 'upd'; }
+    else {
+      u.textContent = (online ? 'Updated ' : 'Offline · last update ') + hm(loadedAt);
+      u.className = 'upd' + (online ? '' : ' off') + (online && (pinned || Date.now() - loadedAt < 10 * 60000) ? ' hide' : '');
+    }
+    var p = '';
+    if (S && S.idleMode !== 'stay') {
+      p = pinned ? '<button class="pinb on" data-act="pin">' + PIN_SVG + 'Pinned · ' + Math.max(1, Math.ceil(pinLeft() / 60000)) + ' min</button>'
+                 : '<button class="pinb" data-act="pin" aria-label="Keep this view on screen">' + PIN_SVG + 'Pin</button>';
+    }
+    $('pinWrap').innerHTML = p;
   }
 
   function renderPages() {
     var track = $('track'), w = pagerW(), ids = S.views;
     if (view >= ids.length) view = 0;
-    // keep each list's scroll position across refreshes
     var scrolls = [];
     var pages = track.children;
     for (var i = 0; i < pages.length; i++) {
@@ -759,7 +927,7 @@
     }
     var html = '';
     ids.forEach(function (id) {
-      var v = VIEWS[id] || VIEWS.combo, inner;
+      var v = VIEWS[id] || VIEWS.home, inner;
       try { inner = v.render(); } catch (e) { inner = '<div class="hint">This view could not be drawn: ' + esc(e.message) + '</div>'; }
       html += '<div class="page" style="width:' + w + 'px"><div class="inner">' + inner + '</div></div>';
     });
@@ -779,6 +947,7 @@
 
   function renderAll() {
     if (!B) return;
+    fixSettings(S);
     applyBodyClass();
     renderHeader();
     renderPages();
@@ -793,6 +962,29 @@
   window.addEventListener('resize', fitHeight);
   window.addEventListener('orientationchange', function () { setTimeout(fitHeight, 350); });
 
+  // Lists that would run past the bottom of their box show whole rows only, then "+N more".
+  function fitAll() {
+    if (document.body.className.indexOf('portrait') >= 0) return;
+    var boxes = document.querySelectorAll('.fit');
+    for (var b = 0; b < boxes.length; b++) {
+      var box = boxes[b], rows = box.querySelectorAll('.fr'), more = box.querySelector('.fmore'), i;
+      for (i = 0; i < rows.length; i++) rows[i].style.display = '';
+      if (!more) continue;
+      more.style.display = 'none';
+      if (box.scrollHeight <= box.clientHeight + 1) continue;
+      more.style.display = '';
+      var limit = box.clientHeight - more.offsetHeight - 14, cut = -1;
+      for (i = 0; i < rows.length; i++) { if (rows[i].offsetTop + rows[i].offsetHeight > limit) { cut = i; break; } }
+      if (cut < 0) { more.style.display = 'none'; continue; }
+      var hidden = 0;
+      for (i = cut; i < rows.length; i++) { rows[i].style.display = 'none'; hidden += +(rows[i].getAttribute('data-n') || 0); }
+      for (i = cut - 1; i >= 0 && rows[i].className.indexOf('fh') >= 0; i--) rows[i].style.display = 'none';
+      if (hidden) more.textContent = '+' + hidden + ' ' + (more.getAttribute('data-what') || 'more');
+      else more.style.display = 'none';
+    }
+  }
+  afterRenderHooks.push(fitAll);
+
   // ================================================================
   //  BUILDING BLOCKS
   // ================================================================
@@ -804,235 +996,417 @@
     snow: '<path d="M9 19h14a5 5 0 0 0 0-10 7 7 0 0 0-13.5 1.5A4.3 4.3 0 0 0 9 19z"/><path d="M11 24v.1M16 27v.1M21 24v.1M13.5 29v.1M18.5 29v.1"/>',
     storm: '<path d="M9 19h14a5 5 0 0 0 0-10 7 7 0 0 0-13.5 1.5A4.3 4.3 0 0 0 9 19z"/><path d="M17 20l-3 5h4l-3 5"/>'
   };
+  var PIN_SVG = '<svg viewBox="0 0 24 24"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg>';
   function icon(name, cls) { return '<svg class="i ' + (cls || '') + '" viewBox="0 0 32 32">' + (ICONS[name] || ICONS.cloud) + '</svg>'; }
 
-  function clockInner() {
-    var t = timeParts(Date.now());
-    return '<div class="t">' + t.t + '<small>' + t.a + '</small></div><div class="d">' + longDay(todayKey()) + '</div>';
+  function timeBig() { var t = timeParts(Date.now()); return t.t + '<small>' + t.a + '</small>'; }
+  // Compact times for tight spots: 9a, 12:30p
+  function ct(ms) { var d = new Date(ms), h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + (m ? ':' + pad(m) : '') + (h < 12 ? 'a' : 'p'); }
+  function durText(ms) {
+    var m = Math.max(1, Math.round(ms / 60000));
+    if (m < 60) return m + ' min';
+    var h = Math.floor(m / 60), r = m % 60;
+    return h + ' hr' + (r ? ' ' + r + ' min' : '');
   }
-  function clockHTML(small) { return '<div class="clock js-clock' + (small ? ' sm' : '') + '">' + clockInner() + '</div>'; }
 
-  function panel(title, sub, body, opts) {
+  // What's happening now / next: "NOW Soccer [until 8:30p]", "UP NEXT Calc II [in 45 min]", "FIRST UP CHEM [tomorrow 9a]".
+  function upNextInfo(cals) {
+    cals = cals || shownCalIds();
+    var now = Date.now(), t = todayKey(), tk = addDays(t, 1), cur = null, nxt = null, tom = null;
+    B.events.forEach(function (e) {
+      if (!cals[e.calId] || e.allDay) return;
+      var k = keyOf(new Date(e.start));
+      if (e.start <= now && e.end > now) { if (!cur || e.end < cur.end) cur = e; }
+      else if (e.start > now && k === t) { if (!nxt || e.start < nxt.start) nxt = e; }
+      else if (e.start > now && k === tk) { if (!tom || e.start < tom.start) tom = e; }
+    });
+    if (cur) return { lab: 'Now', e: cur, pill: 'until ' + ct(cur.end) };
+    if (nxt) { var d = nxt.start - now; return { lab: 'Up next', e: nxt, pill: d <= 3 * 3600000 ? 'in ' + durText(d) : 'at ' + ct(nxt.start) }; }
+    if (tom) return { lab: 'Up next', e: tom, pill: 'tomorrow ' + ct(tom.start) };
+    return null;
+  }
+  function upNextHTML(cals) {
+    var u = upNextInfo(cals);
+    if (!u) return '<span class="muted">Nothing else today</span>';
+    return '<span data-act="ev" data-key="' + esc(u.e.key) + '"><b>' + u.lab + '</b><strong>' + esc(u.e.title) + '</strong><i>' + u.pill + '</i></span>';
+  }
+
+  // Evening: after today's last event has ended, or from 8 pm. Night views then look ahead to tomorrow.
+  function isEvening() {
+    var now = Date.now(), d = new Date(now), t = todayKey(), cals = shownCalIds(), any = false, left = false;
+    if (d.getHours() >= 20) return true;
+    B.events.forEach(function (e) {
+      if (!cals[e.calId] || e.allDay || keyOf(new Date(e.start)) !== t) return;
+      any = true; if (e.end > now) left = true;
+    });
+    return any && !left;
+  }
+  // Compact weather for the header corner: current, or tomorrow's forecast in the evening.
+  function wxCompact(forceTomorrow) {
+    var w = B.weather; if (!w) return '';
+    var tom = forceTomorrow || isEvening(), d = w.days[tom ? 1 : 0];
+    if (tom && d) return '<span class="hwx"><span class="lab">TOMORROW</span>' + icon(d.icon) + '<b>' + d.hi + '&deg;</b><span class="dim">/ ' + d.lo + '&deg;</span>' + esc(d.text) + (d.rain >= 30 ? ' · Rain ' + d.rain + '%' : '') + '</span>';
+    return '<span class="hwx">' + icon(w.icon) + '<b>' + w.temp + '&deg;</b>' + esc(w.text) + (d ? '<span class="dim" style="margin-left:6px">· ' + d.hi + '&deg; / ' + d.lo + '&deg;</span>' : '') + '</span>';
+  }
+
+  function stripHTML() {
+    var w = B.weather, d = w && w.days[0];
+    return '<div class="strip"><div class="st-t js-stime">' + timeBig() + '</div><div class="st-mid"><div class="st-d">' + longDay(todayKey()) + '</div>' +
+      '<div class="nxl js-upnext">' + upNextHTML() + '</div></div>' +
+      (w ? '<div class="st-w">' + icon(w.icon) + '<div class="tmp">' + w.temp + '&deg;</div><div class="tx"><b>' + esc(w.text) + '</b>' +
+        (d ? '<br>' + d.hi + '&deg; / ' + d.lo + '&deg;' + (d.rain >= 30 ? ' · Rain ' + d.rain + '%' : '') : '') + '</div></div>' : '') + '</div>';
+  }
+
+  function panelHTML(title, body, opts) {
     opts = opts || {};
-    return '<div class="panel' + (opts.grow ? ' grow' : '') + '">' +
-      '<div class="tbar"><b>' + esc(title) + '</b><span class="sub">' + (sub || '') + '</span>' + (opts.action || '') + '</div>' +
-      '<div class="pbody">' + body + '</div></div>';
+    return '<div class="panel' + (opts.grow === false ? '' : ' grow') + '"><div class="tbar"><b>' + esc(title) + '</b>' + (opts.cnt != null ? '<span class="cnt">' + opts.cnt + '</span>' : '') +
+      '<span class="sp"></span>' + (opts.action || '') + '</div><div class="pbody' + (opts.fit ? ' fit' : '') + (opts.cls ? ' ' + opts.cls : '') + '">' + body +
+      (opts.fit ? '<div class="fmore" data-what="' + (opts.what || 'more') + '"></div>' : '') + '</div></div>';
   }
 
-  function warningsHTML() {
-    return (B.warnings || []).map(function (w) { return '<div class="warn">' + esc(w) + '</div>'; }).join('');
-  }
+  function warningsHTML() { return (B.warnings || []).map(function (w) { return '<div class="warn">' + esc(w) + '</div>'; }).join(''); }
 
-  function evRow(e) {
-    var now = Date.now(), cls = 'ev';
+  function evRow(e, fit) {
+    var now = Date.now(), cls = 'ev' + (fit ? ' fr' : '');
     if (!e.allDay && e.end <= now) cls += ' past';
     else if (!e.allDay && e.start <= now) cls += ' now';
-    var t = e.allDay ? 'All day' : (function () { var p = timeParts(e.start); return p.t + '<small>' + p.a + '</small>'; })();
-    return '<div class="' + cls + '" data-act="ev" data-key="' + esc(e.key) + '"><div class="t">' + t + '</div>' +
-      '<div class="m">' + markerHTML(e.calId) + '</div><div class="x">' + esc(e.title) +
-      (countdownOn(e.key) ? '<span class="cdmark">COUNTDOWN</span>' : '') +
-      (e.location ? '<span class="loc">' + esc(e.location) + '</span>' : '') + '</div></div>';
+    var t = e.allDay ? 'All day' : ct(e.start);
+    return '<div class="' + cls + '" data-n="1" data-act="ev" data-key="' + esc(e.key) + '"><div class="t">' + t + '</div><div class="x">' + esc(e.title) +
+      (countdownOn(e.key) ? '<span class="cdmark">COUNTDOWN</span>' : '') + (e.location ? '<span class="loc">' + esc(e.location) + '</span>' : '') + '</div></div>';
   }
-
-  function agendaHTML(nDays, cals, emptyToday) {
-    var html = '', t = todayKey();
+  // Agenda: day headers, then events. Two or more finished events today fold into one "N earlier today" line.
+  function agendaRows(nDays, cals) {
+    var html = '', t = todayKey(), now = Date.now();
     for (var i = 0; i < nDays; i++) {
       var k = addDays(t, i), evs = eventsOn(k, cals);
-      html += '<div class="day' + (i === 0 ? ' today' : '') + '"><h3>' + dayLabel(k) + '</h3>';
-      if (!evs.length) html += '<div class="none">' + (i === 0 ? (emptyToday || 'Nothing scheduled') : 'Free') + '</div>';
-      evs.forEach(function (e) { html += evRow(e); });
-      html += '</div>';
+      html += '<div class="dh3 fr fh' + (i === 0 ? ' today' : '') + '">' + dayLabel(k) + '</div>';
+      if (i === 0) {
+        var past = evs.filter(function (e) { return !e.allDay && e.end <= now; });
+        if (past.length >= 2) {
+          html += '<div class="ev earlier fr" data-n="' + past.length + '">' + past.length + ' earlier today</div>';
+          evs = evs.filter(function (e) { return past.indexOf(e) < 0; });
+        }
+      }
+      if (!evs.length) html += '<div class="none fr">' + (i === 0 && eventsOn(k, cals).length ? 'Nothing else today' : 'Nothing planned') + '</div>';
+      evs.forEach(function (e) { html += evRow(e, true); });
     }
     return html;
   }
 
-  function keyHTML(cals) {
-    var shown = B.calendars.filter(function (c) { return cals[c.id]; });
-    if (shown.length < 2) return '';
-    return '<div class="key">' + shown.map(function (c) { return '<span>' + markerHTML(c.id) + esc(c.name) + '</span>'; }).join('') + '</div>';
+  function dueTag(t) {
+    if (!t.due || t.done) return '';
+    var n = dnOf(t.due) - dnOf(todayKey());
+    return '<span class="due' + (n < 0 ? ' late' : '') + '">' + (n < 0 ? 'overdue' : n === 0 ? 'today' : n === 1 ? 'tomorrow' : shortDay(t.due).substr(5)) + '</span>';
   }
-
-  function taskRow(listId, t) {
-    var due = '';
-    if (t.due && !t.done) {
-      var n = dnOf(t.due) - dnOf(todayKey());
-      due = '<span class="due' + (n < 0 ? ' late' : '') + '">' + (n < 0 ? 'overdue' : n === 0 ? 'today' : n === 1 ? 'tomorrow' : shortDay(t.due).substr(5)) + '</span>';
-    }
-    return '<div class="task' + (t.done ? ' done' : '') + (t.busy ? ' busy' : '') + '" data-act="task" data-hold="taskd" data-list="' + esc(listId) + '" data-id="' + esc(t.id) + '">' +
-      '<div class="bx"></div><div class="tt">' + esc(t.title) + '</div>' + due + '</div>';
+  function taskRow(listId, t, listName) {
+    return '<div class="task fr' + (t.done ? ' done' : '') + (t.busy ? ' busy' : '') + '" data-n="1" data-act="task" data-hold="taskd" data-list="' + esc(listId) + '" data-id="' + esc(t.id) + '">' +
+      '<div class="bx"></div><div class="tt">' + (listName ? '<span class="tl">' + esc(listName) + '</span>' : '') + esc(t.title) + '</div>' + dueTag(t) + '</div>';
   }
-
-  function taskPanel(list, grow) {
-    var items = B.tasks[list.id] || [];
-    var open = items.filter(function (t) { return !t.done; }).length;
-    var body = items.length ? items.map(function (t) { return taskRow(list.id, t); }).join('') :
-      '<div class="none">Nothing here. Tap + Add.</div>';
-    return panel(list.title, open + ' to do', body, {
-      grow: grow, action: '<button class="add" data-act="addtask" data-list="' + esc(list.id) + '">+ Add</button>'
+  function recentlyTicked(x) { return x.held && Date.now() - x.held < 10000; }
+  // Open tasks with overdue ones first, then the rest in list order, then done ones.
+  function sortedTasks(items) {
+    var t = todayKey(), late = [], open = [], done = [];
+    items.forEach(function (x) { if (x.done && !recentlyTicked(x)) done.push(x); else if (x.due && x.due < t) late.push(x); else open.push(x); });
+    return late.concat(open, done);
+  }
+  function openCount(list) { return (B.tasks[list.id] || []).filter(function (t) { return !t.done; }).length; }
+  function taskPanel(list, opts) {
+    opts = opts || {};
+    var items = sortedTasks(B.tasks[list.id] || []);
+    var body = items.length ? items.map(function (t) { return taskRow(list.id, t); }).join('') : '<div class="none">Nothing here. Tap + Add.</div>';
+    return panelHTML(list.title, body, { cnt: openCount(list), fit: opts.fit, cls: opts.cls, what: 'more to do',
+      action: '<button class="add" data-act="addtask" data-list="' + esc(list.id) + '">+ Add</button>' });
+  }
+  // Top to-dos across several lists, each tagged with its list name.
+  function mergedTasks(lists) {
+    var all = [], t = todayKey();
+    lists.forEach(function (l) { (B.tasks[l.id] || []).forEach(function (x) { if (!x.done || recentlyTicked(x)) all.push({ l: l, t: x }); }); });
+    all.sort(function (a, b) {
+      var al = a.t.due && a.t.due < t, bl = b.t.due && b.t.due < t;
+      if (al !== bl) return al ? -1 : 1;
+      if ((a.t.due || 'z') !== (b.t.due || 'z')) return (a.t.due || 'z') < (b.t.due || 'z') ? -1 : 1;
+      return 0;
     });
+    return all;
   }
-
   function noListsHTML() { return '<div class="hint">No task lists are shown. Choose some in Settings → Tasks &amp; lists.</div>'; }
+  function homeListPanel() {
+    var lists = shownLists();
+    if (!lists.length) return noListsHTML();
+    if (S.homeList === 'all') {
+      var rows = mergedTasks(lists).map(function (x) { return taskRow(x.l.id, x.t, x.l.title); }).join('') || '<div class="none">All done</div>';
+      return panelHTML('To-do', rows, { cnt: mergedTasks(lists).length, fit: true, what: 'more to do',
+        action: '<button class="add" data-act="addtask" data-list="' + esc(lists[0].id) + '">+ Add</button>' });
+    }
+    var l = listById(S.homeList);
+    if (!l || !B.tasks[l.id]) l = lists[0];
+    return taskPanel(l, { fit: true });
+  }
+  function todoLists() {
+    var picked = (S.todoLists || []).map(listById).filter(function (l) { return l && B.tasks[l.id]; });
+    return (picked.length ? picked : shownLists()).slice(0, 3);
+  }
 
-  function weatherHTML() {
-    var w = B.weather;
-    if (!w) return panel('Weather', '', '<div class="none">Weather is unavailable right now.</div>');
-    var today = w.days[0];
-    var body = '<div class="wx">' + icon(w.icon, 'ic') + '<div class="tmp">' + w.temp + '&deg;</div><div class="tx">' + esc(w.text) +
-      (today ? '<br><span class="muted">H ' + today.hi + '&deg; &middot; L ' + today.lo + '&deg;</span>' : '') + '</div></div><div class="wxd">';
-    w.days.slice(1, 4).forEach(function (d) {
-      body += '<div><b>' + DAYS[wdOf(d.day)].substr(0, 3) + '</b>' + icon(d.icon) + d.hi + '&deg; / ' + d.lo + '&deg;' +
-        (d.rain ? '<br><span class="muted">' + d.rain + '% rain</span>' : '') + '</div>';
+  function forecastRow() {
+    var w = B.weather; if (!w || w.days.length < 2) return '';
+    return '<div class="fc">' + w.days.slice(1, 8).map(function (d) {
+      return '<div><b>' + DAYS[wdOf(d.day)].substr(0, 3) + '</b>' + icon(d.icon) + '<strong>' + d.hi + '&deg;</strong><span class="lo">/ ' + d.lo + '&deg;</span></div>';
+    }).join('') + '</div>';
+  }
+
+  // ---------- Calendar time grid ----------
+  var calOff = 0, monthOff = 0, lastNav = null;
+  function rangeText(a, b) {
+    var pa = partsOf(a), pb = partsOf(b);
+    return pa.m === pb.m ? MONTHS[pa.m] + ' ' + pa.d + ' – ' + pb.d : MONTHS[pa.m].substr(0, 3) + ' ' + pa.d + ' – ' + MONTHS[pb.m].substr(0, 3) + ' ' + pb.d;
+  }
+  function navRow(act, label, off) {
+    return '<div class="navrow"><div class="s"></div><button class="ab" data-act="' + act + '" data-d="-1" aria-label="Earlier">‹</button><span class="rg">' + label + '</span>' +
+      '<button class="ab" data-act="' + act + '" data-d="1" aria-label="Later">›</button><div class="s">' + (off ? '<button class="btn sm pri" data-act="' + act + '" data-d="0">Today</button>' : '') + '</div></div>';
+  }
+  // Lay out overlapping events side by side.
+  function lanes(evs) {
+    var out = [], group = [], laneEnd = [], gEnd = 0;
+    function close() { group.forEach(function (g) { g.n = laneEnd.length; }); group = []; laneEnd = []; }
+    evs.slice().sort(function (a, b) { return a.s - b.s || b.e - a.e; }).forEach(function (x) {
+      if (group.length && x.s >= gEnd) close();
+      var li = -1;
+      for (var i = 0; i < laneEnd.length; i++) if (laneEnd[i] <= x.s) { li = i; break; }
+      if (li < 0) { li = laneEnd.length; laneEnd.push(0); }
+      laneEnd[li] = x.e; x.lane = li; group.push(x); out.push(x);
+      gEnd = Math.max(gEnd, x.e);
+      if (group.length === 1) gEnd = x.e;
     });
-    return panel('Weather', esc(S.place || ''), body + '</div>');
+    close();
+    return out;
+  }
+  function calendarGrid() {
+    var cals = shownCalIds(), t = todayKey(), start = addDays(t, calOff), days = [], i, now = Date.now(), lo = 8, hi = 21, anyAll = false;
+    for (i = 0; i < 5; i++) days.push(addDays(start, i));
+    days.forEach(function (k) {
+      eventsOn(k, cals).forEach(function (e) {
+        if (e.allDay) { anyAll = true; return; }
+        var s = new Date(e.start), en = new Date(e.end), sh = s.getHours(), eh = keyOf(en) !== k ? 24 : en.getHours() + (en.getMinutes() ? 1 : 0);
+        lo = Math.min(lo, sh); hi = Math.max(hi, Math.min(24, eh));
+      });
+    });
+    var N = hi - lo;
+    function pct(ms, k) { var d = new Date(ms); var h = keyOf(d) !== k ? (ms < localMs(k) ? lo : hi) : d.getHours() + d.getMinutes() / 60; return Math.max(0, Math.min(100, (h - lo) / N * 100)); }
+    var html = warningsHTML() + '<div class="tg"><div class="tg-row tg-hd"><div class="gut"></div>';
+    days.forEach(function (k, j) {
+      var p = partsOf(k);
+      html += '<div class="cc' + (k === t ? ' today' : '') + (j === 4 ? ' last' : '') + '" data-act="day" data-day="' + k + '"><div class="w">' + (k === t ? 'Today' : DAYS[wdOf(k)].substr(0, 3)) + '</div><div class="n">' + p.d + '</div></div>';
+    });
+    html += '<div class="gut"></div></div>';
+    if (anyAll) {
+      html += '<div class="tg-row tg-ad"><div class="gut">All-day</div>';
+      days.forEach(function (k, j) {
+        html += '<div class="cc' + (j === 4 ? ' last' : '') + '">' + eventsOn(k, cals).filter(function (e) { return e.allDay; }).map(function (e) {
+          return '<div class="chip" data-act="ev" data-key="' + esc(e.key) + '">' + esc(e.title) + '</div>';
+        }).join('') + '</div>';
+      });
+      html += '<div class="gut"></div></div>';
+    }
+    html += '<div class="tg-row tg-body"><div class="gut">';
+    for (i = lo + 1; i < hi; i++) html += '<div style="top:' + ((i - lo) / N * 100) + '%">' + (i % 12 || 12) + (i < 12 ? 'a' : 'p') + '</div>';
+    html += '</div>';
+    days.forEach(function (k, j) {
+      html += '<div class="cc' + (k === t ? ' today' : '') + (j === 4 ? ' last' : '') + '">';
+      for (var h = 1; h < N; h++) html += '<div class="hl" style="top:' + (h / N * 100) + '%"></div>';
+      var items = eventsOn(k, cals).filter(function (e) { return !e.allDay; }).map(function (e) { return { ev: e, s: pct(e.start, k), e: Math.max(pct(e.end, k), pct(e.start, k) + 2) }; });
+      lanes(items).forEach(function (x) {
+        var e = x.ev, w = 100 / x.n, short = e.end - e.start <= 3600000, tiny = e.end - e.start <= 1800000;
+        var loc = !short && e.location ? ' · ' + esc(e.location) : '';
+        html += '<div class="blk' + (e.end <= now ? ' past' : '') + (tiny ? ' tiny' : '') + (x.n > 1 && !short ? ' narrow' : '') + '" data-act="ev" data-key="' + esc(e.key) + '" style="top:' + x.s + '%;height:' + (x.e - x.s) + '%;left:calc(' + (x.lane * w) + '% + 4px);width:calc(' + w + '% - 8px)">' +
+          '<b>' + esc(e.title) + '</b>' + (short ? '' : '<span>' + ct(e.start) + loc + '</span>') + '</div>';
+      });
+      if (k === t) { var d = new Date(now), nh = d.getHours() + d.getMinutes() / 60; if (nh >= lo && nh <= hi) html += '<div class="nowl" style="top:' + ((nh - lo) / N * 100) + '%"></div>'; }
+      html += '</div>';
+    });
+    html += '<div class="gut"></div></div></div>';
+    return html + navRow('calnav', rangeText(days[0], days[4]), calOff !== 0);
+  }
+
+  // ---------- Month: five weeks from this week ----------
+  function monthGrid() {
+    var cals = shownCalIds(), t = todayKey(), mon = addDays(t, -((wdOf(t) + 6) % 7) + monthOff * 7), LANE = 22, CAP = 3;
+    var html = '<div class="mg"><div class="mwh">' + ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(function (d) { return '<div>' + d + '</div>'; }).join('') + '</div>';
+    var allDay = B.events.filter(function (e) { return cals[e.calId] && e.allDay; });
+    for (var w = 0; w < 5; w++) {
+      var ws = addDays(mon, w * 7), we = addDays(ws, 6), wsn = dnOf(ws);
+      var spans = allDay.filter(function (e) { return e.startKey <= we && addDays(e.endKey, -1) >= ws; }).map(function (e) {
+        return { e: e, a: Math.max(0, dnOf(e.startKey) - wsn), b: Math.min(6, dnOf(addDays(e.endKey, -1)) - wsn) };
+      }).sort(function (x, y) { return x.a - y.a || (y.b - y.a) - (x.b - x.a); });
+      var laneEnd = [];
+      spans.forEach(function (s) {
+        for (var i = 0; i <= laneEnd.length; i++) if (i === laneEnd.length || laneEnd[i] < s.a) { s.lane = i; laneEnd[i] = s.b; break; }
+      });
+      spans = spans.filter(function (s) { return s.lane < 2; });
+      var nl = Math.min(2, laneEnd.length);
+      html += '<div class="mwk">';
+      for (var d = 0; d < 7; d++) {
+        var k = addDays(ws, d), p = partsOf(k), inBar = spans.some(function (s) { return s.a <= d && d <= s.b; });
+        var items = eventsOn(k, cals).filter(function (e) { return !e.allDay; }), cap = inBar ? Math.max(1, CAP - nl) : CAP;
+        html += '<div class="mc' + (k === t ? ' today' : '') + '" data-act="day" data-day="' + k + '"><div class="n"><span>' + p.d + '</span>' +
+          (p.d === 1 || (w === 0 && d === 0) ? '<small>' + MONTHS[p.m].substr(0, 3).toUpperCase() + '</small>' : '') + '</div>' +
+          (inBar ? '<div style="height:' + (nl * LANE) + 'px"></div>' : '');
+        items.slice(0, cap).forEach(function (e) { html += '<div class="mi"><b>' + ct(e.start) + '</b>' + esc(e.title) + '</div>'; });
+        if (items.length > cap) html += '<div class="mi more">+' + (items.length - cap) + ' more</div>';
+        html += '</div>';
+      }
+      spans.forEach(function (s) {
+        html += '<div class="mbar" data-act="ev" data-key="' + esc(s.e.key) + '" style="left:calc(' + (s.a / 7 * 100) + '% + 4px);width:calc(' + ((s.b - s.a + 1) / 7 * 100) + '% - 8px);top:' + (30 + s.lane * LANE) + 'px">' + esc(s.e.title) + '</div>';
+      });
+      html += '</div>';
+    }
+    return html + '</div>' + navRow('monthnav', rangeText(mon, addDays(mon, 34)), monthOff !== 0);
+  }
+
+  // ---------- Countdowns: hero, then 2 medium, then rows of 3 small ----------
+  function cdDays(c) { return dnOf(c.day) - dnOf(todayKey()); }
+  // One countdown box. Text sizes and gaps follow one scale (the box's shorter side), so every box has the same rhythm.
+  function cdTile(c, x, y, w, h, kind) {
+    var n = cdDays(c), s = Math.min(w, h), f = function (k, min) { return Math.max(min || 12, Math.round(s * k)); }, sub;
+    if (n <= 0) sub = '';
+    else if (n < 7) { var rem = c.start ? c.start - Date.now() - n * 864e5 : 0, hrs = rem > 0 ? Math.floor(rem / 3600000) : 0; sub = hrs ? 'and ' + hrs + ' hour' + (hrs === 1 ? '' : 's') : ''; }
+    else { var wk = Math.floor(n / 7), dd = n % 7; sub = wk + (s < 170 ? ' wks' : ' week' + (wk === 1 ? '' : 's')) + (dd ? ', ' + dd + ' day' + (dd === 1 ? '' : 's') : ''); }
+    var hero = kind === 'hero', numK = hero ? .40 : s < 100 ? .34 : kind === 'small' ? .37 : .42;
+    var big = n <= 0 ? '<div class="n" style="font-size:' + f(.22) + 'px;letter-spacing:0">Today!</div>' :
+      '<div class="n" style="font-size:' + f(numK) + 'px;letter-spacing:' + (-s * numK / 26).toFixed(1) + 'px">' + n + '</div>' +
+      (s >= 70 ? '<div class="u" style="font-size:' + f(.045, 12) + 'px;margin-top:' + f(.035, 3) + 'px">' + (n === 1 ? 'day' : 'days') + '</div>' : '');
+    if (s < 130) sub = '';
+    var ts = f(hero ? .075 : .095, s < 100 ? 12 : 13), ds = f(.036, 12), showDate = s >= 140;
+    if (s < 70) return '<div class="cdt" data-act="cd" data-key="' + esc(c.key) + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;padding:4px"><div class="n" style="font-size:' + Math.round(s * .36) + 'px">' + (n <= 0 ? '!' : n) + '</div>' +
+      '<div class="tt" style="font-size:12px;margin-top:4px;-webkit-line-clamp:1;white-space:nowrap;display:block;text-overflow:ellipsis">' + esc(c.title) + '</div></div>';
+    var band = Math.round(ts * 1.2 * (hero ? 1 : 2) + (showDate ? ds * 1.35 + f(.02, 2) : 0));   // fixed bottom band: titles line up across a row
+    return '<div class="cdt' + (hero ? ' hero' : '') + '" data-act="cd" data-key="' + esc(c.key) + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;padding:' + f(.07, 8) + 'px ' + f(.06, 6) + 'px">' +
+      '<div class="ctop">' + big + (sub ? '<div class="wd" style="font-size:' + f(.042) + 'px;margin-top:' + f(.016, 2) + 'px">' + sub + '</div>' : '') + '</div>' +
+      '<div class="cbot" style="height:' + band + 'px;margin-top:' + f(.05, 6) + 'px">' +
+      '<div class="tt" style="font-size:' + ts + 'px">' + esc(c.title) + '</div>' +
+      (showDate ? '<div class="dt" style="font-size:' + ds + 'px;margin-top:' + f(.02, 2) + 'px">' + shortDay(c.day) + (c.start && s >= 200 ? ' · ' + hm(c.start) : '') + '</div>' : '') + '</div></div>';
+  }
+  // Countdown layouts: squares on a unit grid, biggest first (soonest countdown gets the biggest square).
+  var CD_LAYOUTS = {
+    fib: { name: 'Fibonacci spiral', desc: 'Golden-ratio squares, spiraling in · up to 6', cols: 13, rows: 8,
+      sq: [[0, 0, 8], [8, 0, 5], [10, 5, 3], [8, 6, 2], [8, 5, 1], [9, 5, 1]] },
+    halves: { name: 'Halves', desc: '1 big, 4 medium, 8 small · up to 13', cols: 8, rows: 5,
+      sq: [[0, 0, 4], [4, 0, 2], [6, 0, 2], [4, 2, 2], [6, 2, 2], [0, 4, 1], [1, 4, 1], [2, 4, 1], [3, 4, 1], [4, 4, 1], [5, 4, 1], [6, 4, 1], [7, 4, 1]] },
+    puzzle: { name: 'Every size different', desc: '10 squares, no two the same · up to 9', cols: 65, rows: 47,
+      sq: [[0, 0, 25], [41, 23, 24], [42, 0, 23], [0, 25, 22], [22, 28, 19], [25, 0, 17], [25, 17, 11], [36, 17, 6], [36, 23, 5], [22, 25, 3]] }
+  };
+  function cdRects(id, W, H, gap) {
+    var L = CD_LAYOUTS[id] || CD_LAYOUTS.fib, u = Math.min(W / L.cols, H / L.rows);
+    var ox = (W - L.cols * u) / 2, oy = (H - L.rows * u) / 2, g = gap / 2;
+    return L.sq.map(function (q) {
+      return { x: Math.round(ox + q[0] * u + g), y: Math.round(oy + q[1] * u + g), s: Math.round(q[2] * u - gap) };
+    });
+  }
+  function countdownsBlocks() {
+    var list = liveCountdowns();
+    var W = pagerW(), H = $('pager').clientHeight, rects = cdRects(S.cdLayout, W, H, 12), html = '', j = 0, added = false;
+    rects.forEach(function (r) {
+      var pos = 'left:' + r.x + 'px;top:' + r.y + 'px;width:' + r.s + 'px;height:' + r.s + 'px';
+      if (r.s < 44) { html += '<div class="cdt empty" style="' + pos + ';border-style:solid"></div>'; return; }   // too small for a name: just part of the shape
+      var c = list[j++];
+      if (c) html += cdTile(c, r.x, r.y, r.s, r.s, j === 1 ? 'hero' : r.s < 140 ? 'small' : 'm');
+      else if (!added) { added = true; html += '<div class="cdt add" data-act="addcd" style="' + pos + ';font-size:' + Math.max(12, Math.round(r.s * .09)) + 'px"><div style="font-size:' + Math.max(18, Math.round(r.s * .25)) + 'px;line-height:1">+</div>' + (r.s >= 90 ? 'Add countdown' : '') + '</div>'; }
+      else html += '<div class="cdt empty" style="' + pos + '"></div>';
+    });
+    return '<div class="cdw"><div class="cdg" style="width:' + W + 'px;height:' + H + 'px">' + html + '</div></div>';
+  }
+  function cdLayoutMini(id) {
+    return '<div class="cdmini">' + cdRects(id, 132, 82, 3).map(function (r, i) {
+      return '<i style="left:' + r.x + 'px;top:' + r.y + 'px;width:' + r.s + 'px;height:' + r.s + 'px' + (i === 0 ? ';background:var(--fg)' : '') + '"></i>';
+    }).join('') + '</div>';
+  }
+
+  // ---------- Night clock ----------
+  function laterPanel() {
+    var cals = shownCalIds(), w = B.weather, eve = isEvening(), now = Date.now(), k = eve ? addDays(todayKey(), 1) : todayKey();
+    var d = w && w.days[eve ? 1 : 0];
+    var evs = eventsOn(k, cals).filter(function (e) { return e.allDay || eve || e.end > now; }).slice(0, 6);
+    return '<h3>' + (eve ? 'TOMORROW' : 'LATER TODAY') + '</h3>' + (d ? '<div class="w">' + esc(d.text) + ' · ' + d.hi + '&deg; / ' + d.lo + '&deg;' + (d.rain >= 30 ? ' · Rain ' + d.rain + '%' : '') + '</div>' : '') +
+      (evs.length ? evs.map(function (e) { return '<div class="e" data-act="ev" data-key="' + esc(e.key) + '"><b>' + (e.allDay ? 'All day' : ct(e.start)) + '</b>' + esc(e.title) + '</div>'; }).join('') :
+        '<div class="e muted">Nothing planned</div>');
+  }
+  function nightClockHTML() {
+    if (S.nightDesign === 'panel') {
+      var p = partsOf(todayKey());
+      return '<div class="nkp"><div class="l"><div class="t js-nt">' + timeBig() + '</div><div class="d">' + longDay(todayKey()) + '</div>' +
+        '<div class="nxl js-upnext">' + upNextHTML() + '</div></div><div class="r js-later">' + laterPanel() + '</div></div>';
+    }
+    return '<div class="nck"><div class="t js-nt">' + timeBig() + '</div><div class="d">' + longDay(todayKey()) + '</div><div class="nxl js-upnext">' + upNextHTML() + '</div></div>';
   }
 
   // ================================================================
-  //  THE VIEWS (choose up to 3 in Settings -> Board views)
+  //  THE VIEWS (choose up to 5 in Settings -> Board views)
+  //  hdr: what the header's right corner shows on this view.
   // ================================================================
   var VIEWS = {
-    combo: {
-      name: 'Combination', desc: 'Calendar, to-do and weather together. Pick its design below.',
+    home: {
+      name: 'Home', desc: 'Strip, calendar, to-do, 7-day weather', hdr: 'strip',
       render: function () {
-        var d = S.comboDesign;
-        if (d === 'pf') return VIEWS.pf.render();
-        if (d === 'todo') return VIEWS.todofirst.render();
-        var cals = shownCalIds(), lists = shownLists();
-        return '<div class="row"><div class="colm" style="width:58%">' + clockHTML() +
-          panel('Calendar', '', warningsHTML() + agendaHTML(4, cals), { grow: true }) + keyHTML(cals) + '</div>' +
-          '<div class="colm" style="width:42%">' + (lists.length ? taskPanel(lists[0], true) : noListsHTML()) + weatherHTML() + '</div></div>';
-      }
-    },
-    todofirst: {
-      name: 'To-do first', desc: 'Your to-do lists take the big side; calendar and weather on the right.',
-      render: function () {
-        var cals = shownCalIds(), lists = shownLists();
-        var left = lists.length ? taskPanel(lists[0], true) + (lists[1] ? taskPanel(lists[1], true) : '') : noListsHTML();
-        return '<div class="row"><div class="colm" style="width:56%">' + left + '</div>' +
-          '<div class="colm" style="width:44%">' + clockHTML(true) +
-          panel('Calendar', '', warningsHTML() + agendaHTML(3, cals), { grow: true }) + weatherHTML() + '</div></div>';
+        var cals = shownCalIds();
+        return '<div class="vflex">' + stripHTML() + '<div class="hrow">' +
+          panelHTML('Calendar', warningsHTML() + agendaRows(4, cals), { fit: true, action: '<button class="add" data-act="addev">+ Add</button>' }) + homeListPanel() + '</div>' + forecastRow() + '</div>';
       }
     },
     calendar: {
-      name: 'Calendar', desc: 'The next several days side by side, all your calendars mixed together.',
-      render: function () {
-        var cals = shownCalIds(), n = S.calDays || 5, t = todayKey(), html = '<div class="colm" style="height:100%;width:100%">' + warningsHTML() + '<div class="cols grow">';
-        for (var i = 0; i < n; i++) {
-          var k = addDays(t, i), evs = eventsOn(k, cals), p = partsOf(k), now = Date.now();
-          html += '<div class="dcol' + (i === 0 ? ' today' : '') + '"><div class="dh">' + (i === 0 ? 'Today' : DAYS[wdOf(k)].substr(0, 3)) +
-            '<span>' + MONTHS[p.m].substr(0, 3) + ' ' + p.d + '</span></div><div class="pbody">';
-          if (!evs.length) html += '<div class="none">Free</div>';
-          evs.forEach(function (e) {
-            var past = !e.allDay && e.end <= now;
-            html += '<div class="cev' + (e.allDay ? ' allday' : '') + (past ? ' past' : '') + '" data-act="ev" data-key="' + esc(e.key) + '">' +
-              (e.allDay ? '' : '<span class="ct">' + hm(e.start) + '</span>') + markerHTML(e.calId) + ' ' + esc(e.title) +
-              (e.location ? '<span class="loc">' + esc(e.location) + '</span>' : '') + '</div>';
-          });
-          html += '</div></div>';
-        }
-        return html + '</div>' + keyHTML(cals) + '</div>';
-      }
+      name: 'Calendar', desc: 'Time grid, 5 days', hdr: 'full',
+      render: function () { return '<div class="vflex">' + calendarGrid() + '</div>'; }
     },
-    tasks: {
-      name: 'Tasks', desc: 'Your task lists side by side, each with its own + Add.',
+    todo: {
+      name: 'To-do', desc: 'All lists side by side', hdr: 'strip',
       render: function () {
-        var lists = shownLists().slice(0, 4);
-        if (!lists.length) return noListsHTML();
-        return '<div class="row">' + lists.map(function (l) {
-          return '<div class="colm" style="width:' + (100 / lists.length) + '%">' + taskPanel(l, true) + '</div>';
-        }).join('') + '</div>';
-      }
-    },
-    pf: {
-      name: 'Personal + Family', desc: 'The screen split in two, each side with its own calendars and lists.',
-      render: function () {
-        var html = '<div class="pf">';
-        ['left', 'right'].forEach(function (side) {
-          var cfg = S.pf[side] || {}, cals = setOf(cfg.cals), lists = (cfg.lists || []).map(listById).filter(function (l) { return l && B.tasks[l.id]; });
-          html += '<div class="side"><div class="who">' + esc(cfg.name || (side === 'left' ? 'Left' : 'Right')) + '</div>';
-          if (!(cfg.cals || []).length && !lists.length) {
-            html += '<div class="hint">Choose this side’s calendars and lists in Settings → Personal + Family.</div></div>';
-            return;
-          }
-          if ((cfg.cals || []).length) html += panel('Calendar', '', agendaHTML(3, cals), { grow: true });
-          lists.slice(0, 2).forEach(function (l) { html += taskPanel(l, true); });
-          html += '</div>';
-        });
-        return html + '</div>';
+        var lists = todoLists();
+        return '<div class="vflex">' + stripHTML() + (lists.length ? '<div class="hrow">' + lists.map(function (l) { return taskPanel(l, { cls: 'small' }); }).join('') + '</div>' : noListsHTML()) + '</div>';
       }
     },
     countdowns: {
-      name: 'Countdowns', desc: 'Up to 4 big cards counting down to the events you choose.',
-      render: function () {
-        var list = liveCountdowns().slice(0, 4);
-        if (!list.length) return '<div class="hint">No countdowns yet. Tap an event and turn on “Count down to this”, or put #countdown in an event’s title.</div>';
-        return '<div class="cards">' + list.map(function (c) {
-          var n = dnOf(c.day) - dnOf(todayKey()), big;
-          if (n <= 0) big = 'Today!';
-          else if (n > 99) big = Math.round(n / 7) + '<small>weeks</small>';
-          else big = n + '<small>' + (n === 1 ? 'day' : 'days') + '</small>';
-          return '<div class="card' + (list.length === 1 ? ' one' : list.length === 2 ? ' tall' : '') + (n <= 0 ? ' today' : '') + '" data-act="cd" data-key="' + esc(c.key) + '">' +
-            '<div><div class="ttl">' + esc(c.title) + '</div><div class="dt">' + longDay(c.day) + (c.start ? ' · ' + hm(c.start) : '') + '</div></div>' +
-            '<div class="big">' + big + '</div></div>';
-        }).join('') + '</div>';
-      }
+      name: 'Countdowns', desc: 'Squares sized by how soon', hdr: 'clock',
+      render: countdownsBlocks
     },
-    week: {
-      name: 'Week', desc: 'Monday to Sunday of this week, with events in each day.',
+    pf: {
+      name: 'Personal + Family', desc: 'Each person’s day', hdr: 'strip',
       render: function () {
-        var cals = shownCalIds(), t = todayKey(), mon = addDays(t, -((wdOf(t) + 6) % 7)), now = Date.now(), html = '<div class="cols week">';
-        for (var i = 0; i < 7; i++) {
-          var k = addDays(mon, i), evs = eventsOn(k, cals), p = partsOf(k);
-          html += '<div class="dcol' + (k === t ? ' today' : '') + '"><div class="dh">' + DAYS[wdOf(k)].substr(0, 3) + '<span>' + p.d + '</span></div><div class="pbody">';
-          evs.forEach(function (e) {
-            html += '<div class="cev' + (e.allDay ? ' allday' : '') + (!e.allDay && e.end <= now ? ' past' : '') + '" data-act="ev" data-key="' + esc(e.key) + '">' +
-              (e.allDay ? '' : '<span class="ct">' + hm(e.start) + '</span>') + esc(e.title) + '</div>';
-          });
-          html += '</div></div>';
-        }
-        return html + '</div>';
-      }
-    },
-    month: {
-      name: 'Month', desc: 'A month grid with event titles in each day. Tap a day to see it all.',
-      render: function () {
-        var cals = shownCalIds(), t = todayKey(), p = partsOf(t);
-        var first = p.y + '-' + pad(p.m + 1) + '-01', start = addDays(first, -((wdOf(first) + 6) % 7));
-        var html = '<div class="month"><div class="mh">' + MONTHS[p.m] + ' ' + p.y + '</div><div class="mgrid"><div class="mrow hd">';
-        ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(function (d) { html += '<div class="mcell" style="border:0">' + d + '</div>'; });
-        html += '</div>';
-        var weeks = Math.ceil((dnOf(first) - dnOf(start) + new Date(p.y, p.m + 1, 0).getDate()) / 7);
-        for (var w = 0; w < weeks; w++) {
-          html += '<div class="mrow">';
-          for (var d = 0; d < 7; d++) {
-            var k = addDays(start, w * 7 + d), evs = eventsOn(k, cals), kp = partsOf(k);
-            html += '<div class="mcell' + (kp.m !== p.m ? ' other' : '') + (k === t ? ' today' : '') + '" data-act="day" data-day="' + k + '"><span class="n">' + kp.d + '</span>';
-            evs.slice(0, 3).forEach(function (e) { html += '<div class="mi">' + (e.allDay ? '' : timeParts(e.start).t + ' ') + esc(e.title) + '</div>'; });
-            if (evs.length > 3) html += '<div class="mi muted">+' + (evs.length - 3) + ' more</div>';
-            html += '</div>';
-          }
-          html += '</div>';
-        }
+        var html = '<div class="vflex">' + stripHTML() + '<div class="pf">', t = todayKey(), now = Date.now();
+        ['left', 'right'].forEach(function (side) {
+          var cfg = S.pf[side] || {}, cals = setOf(cfg.cals), lists = (cfg.lists || []).map(listById).filter(function (l) { return l && B.tasks[l.id]; });
+          var who = cfg.name || (side === 'left' ? 'Left' : 'Right');
+          html += '<div class="side">';
+          if (!(cfg.cals || []).length && !lists.length) { html += '<div class="hint">Choose this side’s calendars and lists in Settings → Personal + Family.</div></div>'; return; }
+          var todo = mergedTasks(lists), parts = [];
+          if ((cfg.cals || []).length) parts.push('<div class="fit pfpart" style="-webkit-flex:' + (lists.length ? 1.25 : 1) + ';flex:' + (lists.length ? 1.25 : 1) + '">' + agendaRows(3, cals) + '<div class="fmore" data-what="more"></div></div>');
+          if (lists.length) parts.push('<div class="fit pfpart"><div class="dh3 fr fh">To-do</div>' + (todo.length ? todo.map(function (x) { return taskRow(x.l.id, x.t, lists.length > 1 ? x.l.title : ''); }).join('') : '<div class="none fr">All done</div>') + '<div class="fmore" data-what="more to do"></div></div>');
+          html += panelHTML(who, parts.join(''), { cls: 'small pfbody',
+            action: '<button class="add" data-act="pfadd" data-side="' + side + '">+ Add</button>' }) + '</div>';
+        });
         return html + '</div></div>';
       }
     },
-    nightclock: {
-      name: 'Night clock', desc: 'A huge clock and the next event, readable from across the room.',
-      render: function () { return '<div class="nclock js-nclock">' + nightClockInner() + '</div>'; }
+    month: {
+      name: 'Month', desc: 'Five weeks ahead', hdr: 'full',
+      render: function () { return '<div class="vflex">' + monthGrid() + '</div>'; }
     },
-    photos: {
-      name: 'Photos', desc: 'Your photos as a slideshow, in the same black-and-white style as Sleep.',
-      render: function () { return '<div class="pframe js-photoview"></div>'; }
+    nightclock: {
+      name: 'Night clock', desc: 'Big clock for the room', hdr: 'weather',
+      render: nightClockHTML
     }
   };
-  var VIEW_ORDER = ['combo', 'calendar', 'tasks', 'pf', 'countdowns', 'todofirst', 'week', 'month', 'nightclock', 'photos'];
+  var VIEW_ORDER = VIEW_IDS;
 
-  function nightClockInner() {
-    var t = timeParts(Date.now()), cals = B ? shownCalIds() : {}, nx = B ? nextEvent(cals) : null, wx = B && B.weather;
-    var nextTxt = nx ? 'Next: <b>' + esc(nx.title) + '</b> · ' + (evDay(nx) === todayKey() ? '' : 'tomorrow ') + hm(nx.start) : 'Nothing else today';
-    return '<div class="t">' + t.t + '<small>' + t.a + '</small></div><div class="d">' + longDay(todayKey()) +
-      (wx ? ' · ' + wx.temp + '&deg;' : '') + '</div><div class="nx">' + nextTxt + '</div>';
+  // Paging the Calendar (days) and Month (weeks): tap = 1, a quick second tap = 5 in total.
+  function navStep(kind, el) {
+    var d = +attr(el, 'd'), now = Date.now(), cur = kind === 'cal' ? calOff : monthOff;
+    if (d === 0) cur = 0;
+    else if (lastNav && lastNav.kind === kind && lastNav.d === d && now - lastNav.t < 450 && !lastNav.done) { cur += d * 4; lastNav.done = true; }
+    else { cur += d; lastNav = { kind: kind, d: d, t: now, done: false }; }
+    if (kind === 'cal') calOff = cur; else monthOff = cur;
+    renderPages();
   }
+  ACT.calnav = function (el) { navStep('cal', el); };
+  ACT.monthnav = function (el) { navStep('month', el); };
+  ACT.addcd = function () { if (!B) return; setTab = 'cds'; if (S.passcode) askPasscode(); else showSettings(); };
 
   // Tap actions on the board
   ACT.noop = function () {};
@@ -1043,6 +1417,8 @@
     if (!t || t.busy || /^tmp/.test(t.id)) return;
     t.done = !t.done;
     if (t.done) t.completed = Date.now();
+    t.held = Date.now();
+    setTimeout(function () { if (!sheetOpen && !settingsOpen) renderPages(); }, 10300);
     send('task.toggle', [listId, t.id, t.done], function () { t.done = !t.done; });
   };
 
@@ -1052,7 +1428,7 @@
   var sheetCtx = null;
   function openSheet(title, body, foot) {
     sheetOpen = true;
-    $('sheetCard').innerHTML = '<div class="sh"><h2>' + esc(title) + '</h2><button class="btn sm" data-act="close">Close</button></div>' +
+    $('sheetCard').innerHTML = '<div class="sh"><h2>' + esc(title) + '</h2>' + (foot ? '' : '<button class="btn sm" data-act="close">Close</button>') + '</div>' +
       '<div class="sb" id="sheetBody">' + body + '</div>' + (foot ? '<div class="sf">' + foot + '</div>' : '');
     $('sheet').className = 'scrim';
   }
@@ -1150,7 +1526,7 @@
   ACT.evedit = function () { openEventForm(findEvent(sheetCtx.key)); };
 
   // ---------- + Event / edit event ----------
-  function openEventForm(e, day) {
+  function openEventForm(e, day, calId) {
     var cals = writableCals();
     if (!cals.length) { toast('No Google calendar you can add to.'); return; }
     var editing = !!e;
@@ -1160,7 +1536,7 @@
     if (e && !e.allDay) { st = timeParts(e.start).hh; en = timeParts(e.end).hh; }
     else { var h = Math.min(new Date().getHours() + 1, 22); st = pad(h) + ':00'; en = pad(h + 1) + ':00'; }
     var allDay = e ? e.allDay : false;
-    var calOpts = cals.map(function (c) { return '<option value="' + esc(c.id) + '"' + (c.id === (e ? e.calId : defaultCalId()) ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('');
+    var calOpts = cals.map(function (c) { return '<option value="' + esc(c.id) + '"' + (c.id === (e ? e.calId : calId || defaultCalId()) ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('');
     var body = '<div class="fld"><label>Title</label><input class="inp" id="fTitle" maxlength="200" autocomplete="off" value="' + esc(e ? e.title : '') + '" placeholder="What’s happening?"></div>' +
       (editing ? '' : '<div class="fld"><label>Calendar</label><select class="inp" id="fCal">' + calOpts + '</select></div>') +
       chkHTML('fAllDay', 'All day', allDay, 'evallday') +
@@ -1217,7 +1593,7 @@
   // ---------- day (from the month grid) ----------
   ACT.day = function (el) {
     var k = attr(el, 'day'), evs = eventsOn(k, shownCalIds());
-    openSheet(longDay(k), evs.length ? evs.map(evRow).join('') : '<div class="none">Nothing scheduled.</div>',
+    openSheet(longDay(k), evs.length ? evs.map(function (e) { return evRow(e); }).join('') : '<div class="none">Nothing planned</div>',
       '<button class="btn" data-act="addevday" data-day="' + k + '">+ Event this day</button><button class="btn pri" data-act="close">Done</button>');
   };
 
@@ -1236,6 +1612,16 @@
     if (!editing) setTimeout(function () { try { $('tTitle').focus(); } catch (e) {} }, 300);
   }
   ACT.addtask = function (el) { openTaskForm(attr(el, 'list')); };
+  // Personal + Family "+ Add": that side holds events and to-dos, so ask which.
+  ACT.pfadd = function (el) {
+    var side = attr(el, 'side'), cfg = S.pf[side] || {}, cals = writableCals().filter(function (c) { return (cfg.cals || []).indexOf(c.id) >= 0; });
+    var lists = (cfg.lists || []).map(listById).filter(function (l) { return l; });
+    sheetCtx = { kind: 'pfadd', cal: cals.length ? cals[0].id : '', list: lists.length ? lists[0].id : '' };
+    openSheet('Add to ' + (cfg.name || 'this side'), '<p class="lead" style="margin:0">What would you like to add?</p>',
+      '<button class="btn" data-act="close">Cancel</button>' + (lists.length ? '<button class="btn" data-act="pfaddtask">To-do</button>' : '') + '<button class="btn pri" data-act="pfaddev">Event</button>');
+  };
+  ACT.pfaddev = function () { var c = sheetCtx && sheetCtx.cal; closeSheet(); openEventForm(null, null, c); };
+  ACT.pfaddtask = function () { var l = sheetCtx && sheetCtx.list; closeSheet(); openTaskForm(l); };
   HOLD.taskd = function (el) {
     var t = findTask(attr(el, 'list'), attr(el, 'id'));
     if (t && !/^tmp/.test(t.id)) openTaskForm(attr(el, 'list'), t);
@@ -1302,7 +1688,7 @@
   ACT.settab = function (el) { setTab = attr(el, 'tab'); renaming = null; renderSettings(); };
 
   var TABS = [['views', 'Board views'], ['cals', 'Calendars'], ['lists', 'Tasks & lists'], ['pf', 'Personal + Family'],
-    ['cds', 'Countdowns'], ['photos', 'Photos'], ['display', 'Display']];
+    ['cds', 'Countdowns'], ['photos', 'Sleep & photos'], ['display', 'Display']];
 
   function renderSettings() {
     var html = '<div class="st"><h1>Settings</h1><button class="btn pri" data-act="setdone">Done</button></div><div class="sbody"><div class="tabs">';
@@ -1333,42 +1719,163 @@
   var PANES = {};
 
   // ---------- Board views ----------
+  var selSlot = -1;
+  var MINI = {
+    strip: '<div class="bo rw" style="height:12px;-webkit-align-items:center;align-items:center;padding:0 3px"><i style="width:18px;height:6px"></i><div class="l2" style="width:26px"></div><i style="width:8px;height:6px;margin-left:auto"></i></div>',
+    lines: function (n, first) { var s = ''; for (var i = 0; i < n; i++) s += '<div class="' + (i === 0 && first ? 'l' : 'l2') + '"></div>'; return s; },
+    nav: '<div class="rw" style="-webkit-justify-content:center;justify-content:center"><div class="bo" style="width:8px;height:7px"></div><div class="l" style="width:22px;margin-top:2px"></div><div class="bo" style="width:8px;height:7px"></div></div>'
+  };
+  function miniHTML(id) {
+    var L = MINI.lines, box = function (n, f) { return '<div class="bo" style="-webkit-flex:1;flex:1;padding:3px">' + L(n, f) + '</div>'; };
+    if (id === 'home') return MINI.strip + '<div class="rw" style="-webkit-flex:1;flex:1">' + box(4, true) + box(4, true) + '</div><div class="bo" style="height:6px"></div>';
+    if (id === 'todo') return MINI.strip + '<div class="rw" style="-webkit-flex:1;flex:1">' + box(5, true) + box(3, true) + box(2, true) + '</div>';
+    if (id === 'pf') return MINI.strip + '<div class="rw" style="-webkit-flex:1;flex:1">' + box(5) + box(5) + '</div>';
+    if (id === 'calendar') {
+      var cols = [[[10, 14], [34, 10], [52, 24]], [[10, 14], [44, 10]], [[20, 16], [60, 18]], [[10, 14], [70, 12]], []], s = '';
+      cols.forEach(function (bl, i) {
+        s += '<div style="-webkit-flex:1;flex:1;position:relative;border-left:1px solid #ccc' + (i === 0 ? ';background:#e8e8e8' : '') + '">' +
+          bl.map(function (b) { return '<div class="bo" style="position:absolute;left:1px;right:1px;top:' + b[0] + '%;height:' + b[1] + '%"></div>'; }).join('') + '</div>';
+      });
+      return '<div class="rw" style="height:6px">' + '<i style="-webkit-flex:1;flex:1"></i><div class="l2" style="-webkit-flex:4;flex:4;margin-top:2px"></div></div><div class="rw" style="-webkit-flex:1;flex:1">' + s + '</div>' + MINI.nav;
+    }
+    if (id === 'countdowns') return '<div style="position:relative;-webkit-flex:1;flex:1">' + cdRects(S.cdLayout, 150, 52, 3).map(function (r, i) { return '<div class="bo" style="position:absolute;left:' + r.x + 'px;top:' + r.y + 'px;width:' + r.s + 'px;height:' + r.s + 'px' + (i === 0 ? ';background:var(--fg)' : '') + '"></div>'; }).join('') + '</div>';
+    if (id === 'countdowns-old') return '<div class="rw" style="-webkit-flex:1;flex:1;-webkit-align-items:center;align-items:center"><i style="width:46px;height:46px"></i><div style="-webkit-flex:1;flex:1"><div class="rw"><div class="bo" style="-webkit-flex:1;flex:1;height:22px"></div><div class="bo" style="-webkit-flex:1;flex:1;height:22px"></div></div>' +
+      '<div class="rw" style="margin-top:3px"><div class="bo" style="-webkit-flex:1;flex:1;height:14px"></div><div class="bo" style="-webkit-flex:1;flex:1;height:14px"></div><div class="bo" style="-webkit-flex:1;flex:1;height:14px;border-style:dashed"></div></div></div></div>';
+    if (id === 'month') {
+      var g = '';
+      for (var r = 0; r < 4; r++) { g += '<div class="rw" style="-webkit-flex:1;flex:1">'; for (var c = 0; c < 7; c++) g += '<div style="-webkit-flex:1;flex:1;border:1px solid #ccc' + (r === 0 && c === 0 ? ';background:#e8e8e8' : '') + '"></div>'; g += '</div>'; }
+      return '<div style="-webkit-flex:1;flex:1;display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;position:relative">' + g +
+        '<div class="bo" style="position:absolute;left:30%;width:68%;top:28%;height:5px;background:#fff"></div></div>' + MINI.nav;
+    }
+    if (id === 'nightclock') {
+      if (S.nightDesign === 'panel') return '<div class="rw" style="position:absolute;left:0;top:0;right:0;bottom:0;background:#000;padding:8px;-webkit-align-items:center;align-items:center"><div style="-webkit-flex:1.2;flex:1.2"><i style="background:#cfcfcf;width:80%;height:16px"></i><i style="background:#666;width:50%;height:3px;margin-top:4px"></i></div><div style="-webkit-flex:1;flex:1;border-left:1px solid #444;padding-left:5px"><i style="background:#777;height:3px;width:60%"></i><i style="background:#555;height:3px;margin-top:4px"></i><i style="background:#555;height:3px;margin-top:4px"></i><i style="background:#555;height:3px;margin-top:4px"></i></div></div>';
+      return '<div style="position:absolute;left:0;top:0;right:0;bottom:0;background:#000;display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center"><i style="background:#cfcfcf;width:58%;height:22px"></i><i style="background:#777;width:38%;height:4px;margin-top:5px"></i><i style="background:#555;width:30%;height:4px;margin-top:4px"></i></div>';
+    }
+    return '';
+  }
   PANES.views = function () {
-    var chosen = S.views, html = '<h2>Board views</h2><p class="lead">Tick up to 3 views to swipe between. The first one is home: the board returns to it after ' +
-      S.homeMinutes + ' minute' + (S.homeMinutes === 1 ? '' : 's') + ' untouched. Use the arrows to change the order.</p>';
-    var order = chosen.concat(VIEW_ORDER.filter(function (v) { return chosen.indexOf(v) < 0; }));
-    order.forEach(function (id) {
-      var v = VIEWS[id], i = chosen.indexOf(id), on = i >= 0;
-      html += '<div class="srow"><div class="chk' + (on ? ' on' : '') + '" data-act="vtoggle" data-id="' + id + '"><span class="bx"></span></div>' +
-        '<div class="grow"><b>' + (on ? (i + 1) + '. ' : '') + esc(v.name) + '</b>' + (i === 0 ? '<span class="tag">Home</span>' : '') + '<small>' + esc(v.desc) + '</small></div>' +
-        (on ? '<button class="arrow" data-act="vmove" data-id="' + id + '" data-d="-1"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
-          '<button class="arrow" data-act="vmove" data-id="' + id + '" data-d="1"' + (i === chosen.length - 1 ? ' disabled' : '') + '>▼</button>' : '') + '</div>';
+    var chosen = S.views, html = '<h2>Board views <span class="bv-cnt">' + chosen.length + ' of 5</span></h2>';
+    html += '<div class="bv-lab">ON THE BOARD · SWIPE ORDER · 1 IS HOME</div><div class="bv-slots" id="bvSlots">';
+    var firstEmpty = true;
+    for (var i = 0; i < 5; i++) {
+      var id = chosen[i];
+      if (id) {
+        html += '<div class="bv-slot' + (selSlot === i ? ' sel' : '') + '" data-act="slotsel" data-slot="' + i + '"><span class="num">' + (i + 1) + '</span><b>' + esc(VIEWS[id].name) + '</b>' +
+          (selSlot === i ? '<span class="mv"><button data-act="slotmv" data-d="-1"' + (i === 0 ? ' disabled style="opacity:.25"' : '') + '>‹</button><button data-act="slotmv" data-d="1"' + (i === chosen.length - 1 ? ' disabled style="opacity:.25"' : '') + '>›</button></span>' : '') + '</div>';
+      } else { html += '<div class="bv-slot empty">' + (firstEmpty ? '+ Tap a view below' : '') + '</div>'; firstEmpty = false; }
+    }
+    html += '</div><div class="bv-hint">To change the order, press and hold a view and drag it, or tap it and use ‹ ›.</div>';
+    html += '<div class="bv-lab">ALL VIEWS · TAP TO ADD OR REMOVE</div><div class="bv-grid">';
+    VIEW_ORDER.forEach(function (id) {
+      var v = VIEWS[id], k = chosen.indexOf(id), opt = '';
+      if (id === 'home') {
+        opt = '<select data-change="homelist"><option value="">Shows: first list</option>' + shownLists().map(function (l) {
+          return '<option value="' + esc(l.id) + '"' + (S.homeList === l.id ? ' selected' : '') + '>Shows: ' + esc(l.title) + '</option>';
+        }).join('') + '<option value="all"' + (S.homeList === 'all' ? ' selected' : '') + '>Shows: top items from all lists</option></select>';
+      }
+      if (id === 'nightclock') opt = seg(S.nightDesign, 'nightdesign', [['big', 'Big clock'], ['panel', 'Clock + panel']]);
+      if (id === 'todo') opt = '<span class="s">Pick lists in Tasks &amp; lists</span>';
+      if (id === 'pf') opt = '<span class="s">Set up in Personal + Family</span>';
+      html += '<div class="bv-tile' + (k >= 0 ? ' on' : '') + '" data-act="vtoggle" data-id="' + id + '">' + (k >= 0 ? '<span class="badge">' + (k + 1) + '</span>' : '') +
+        '<div class="mini">' + miniHTML(id) + '</div><b>' + esc(v.name) + '</b><span class="s">' + esc(v.desc) + '</span>' + opt + '</div>';
     });
-    html += '<h3>Combination design</h3>' + seg(S.comboDesign, 'combo', [['classic', 'Classic'], ['todo', 'To-do first'], ['pf', 'Personal + Family']]);
-    html += '<h3>Days in the Calendar view</h3>' + seg(S.calDays || 5, 'caldays', [[3, '3 days'], [5, '5 days'], [7, '7 days']]);
+    html += '</div>';
+    html += '<div class="bv-idle"><div class="bv-lab" style="margin-top:0">WHEN NOBODY’S TOUCHING THE BOARD</div>' +
+      '<div class="bv-irow"><span class="k">After</span>' + seg(S.homeMinutes, 'homemin', [[1, '1 min'], [3, '3 min'], [5, '5 min'], [10, '10 min']]) + '<span style="margin-left:10px" class="muted">untouched</span></div>' +
+      '<div class="bv-irow"><span class="k">Then</span>' + seg(S.idleMode, 'idlemode', [['home', 'Go to Home'], ['rotate', 'Rotate views'], ['stay', 'Stay put']]) + '</div>' +
+      (S.idleMode === 'rotate' ? '<div class="bv-irow"><span class="k">Rotate every</span>' + seg(S.rotateMinutes, 'rotmin', [[1, '1 min'], [2, '2 min'], [5, '5 min'], [10, '10 min']]) + '</div>' : '') +
+      '<p class="lead" style="margin-top:8px;font-size:13px">' + (S.idleMode === 'rotate' ? 'Rotation goes through your views in order, starting at Home. ' : '') +
+      (S.idleMode === 'stay' ? 'The board stays on whatever view is showing.' : 'To hold one view for a while, tap the pin in the bottom bar (15 min – 2 hr).') + '</p></div>';
     return html;
   };
   ACT.vtoggle = function (el) {
     var id = attr(el, 'id'), v = S.views.slice(), i = v.indexOf(id);
     if (i >= 0) { if (v.length === 1) { toast('Keep at least one view.'); return; } v.splice(i, 1); }
-    else { if (v.length >= 3) { toast('Untick one first. Up to 3 views.'); return; } v.push(id); }
-    view = 0;
+    else { if (v.length >= 5) { toast('Up to 5 views. Remove one first.'); return; } v.push(id); }
+    view = 0; selSlot = -1;
     saveSettings({ views: v }); renderSettings();
   };
-  ACT.vmove = function (el) {
-    if (el.disabled) return;
-    var v = S.views.slice(), i = v.indexOf(attr(el, 'id')), j = i + (+attr(el, 'd'));
-    if (j < 0 || j >= v.length) return;
-    var t = v[i]; v[i] = v[j]; v[j] = t;
+  ACT.slotsel = function (el) { var i = +attr(el, 'slot'); selSlot = selSlot === i ? -1 : i; renderSettings(); };
+  function moveView(from, to) {
+    var v = S.views.slice();
+    if (from < 0 || from >= v.length || to < 0 || to >= v.length || from === to) return;
+    var x = v.splice(from, 1)[0]; v.splice(to, 0, x);
     view = 0;
-    saveSettings({ views: v }); renderSettings();
+    saveSettings({ views: v });
+  }
+  ACT.slotmv = function (el) {
+    if (el.disabled || selSlot < 0) return;
+    var to = selSlot + (+attr(el, 'd'));
+    if (to < 0 || to >= S.views.length) return;
+    moveView(selSlot, to); selSlot = to; renderSettings();
   };
-  ACT.combo = function (el) { saveSettings({ comboDesign: attr(el, 'v') }); renderSettings(); };
-  ACT.caldays = function (el) { saveSettings({ calDays: +attr(el, 'v') }); renderSettings(); };
+  ACT.nightdesign = function (el) { saveSettings({ nightDesign: attr(el, 'v') }); renderSettings(); };
+  ACT.idlemode = function (el) { saveSettings({ idleMode: attr(el, 'v') }); if (attr(el, 'v') === 'stay') setPin(0); renderSettings(); };
+  ACT.rotmin = function (el) { saveSettings({ rotateMinutes: +attr(el, 'v') }); renderSettings(); };
+  ACT.homemin = function (el) { saveSettings({ homeMinutes: +attr(el, 'v') }); renderSettings(); };
+  CHG.homelist = function (el) { saveSettings({ homeList: el.value }); };
+
+  // Press and hold a view in the top row, then drag it to a new place.
+  var slotDrag = null;
+  function slotDragStart(e) {
+    if (!settingsOpen || setTab !== 'views' || e.touches.length !== 1) return;
+    var el = closest(e.target, '.bv-slot[data-slot]');
+    if (!el || closest(e.target, 'button')) return;
+    var t = e.touches[0];
+    slotDrag = { el: el, from: +attr(el, 'slot'), x: t.clientX, y: t.clientY, on: false, to: -1 };
+    slotDrag.timer = setTimeout(function () {
+      if (!slotDrag) return;
+      slotDrag.on = true; slotDrag.to = slotDrag.from;
+      el.className += ' dragging';
+    }, 380);
+  }
+  function slotDragMove(e) {
+    if (!slotDrag) return false;
+    var t = e.touches[0], dx = t.clientX - slotDrag.x, dy = t.clientY - slotDrag.y;
+    if (!slotDrag.on) { if (Math.abs(dx) > 10 || Math.abs(dy) > 10) { clearTimeout(slotDrag.timer); slotDrag = null; } return false; }
+    slotDrag.el.style.webkitTransform = slotDrag.el.style.transform = 'translate(' + dx + 'px,0)';
+    var slots = document.querySelectorAll('#bvSlots .bv-slot[data-slot]'), to = slotDrag.from;
+    for (var i = 0; i < slots.length; i++) {
+      var r = slots[i].getBoundingClientRect();
+      if (t.clientX >= r.left && t.clientX <= r.right) to = +attr(slots[i], 'slot');
+      if (slots[i] !== slotDrag.el) slots[i].className = slots[i].className.replace(' over', '');
+    }
+    slotDrag.to = to;
+    if (to !== slotDrag.from) { var o = document.querySelector('#bvSlots .bv-slot[data-slot="' + to + '"]'); if (o && o.className.indexOf(' over') < 0) o.className += ' over'; }
+    return true;
+  }
+  function slotDragEnd() {
+    if (!slotDrag) return false;
+    clearTimeout(slotDrag.timer);
+    var d = slotDrag; slotDrag = null;
+    if (!d.on) return false;
+    lastInteraction = Date.now();
+    if (d.to >= 0 && d.to !== d.from) { moveView(d.from, d.to); selSlot = -1; }
+    renderSettings();
+    return true;
+  }
+
+  // ---------- Pin: keep this view on screen for a while ----------
+  var pinUntil = +(store('pin') || 0);
+  function pinLeft() { return Math.max(0, pinUntil - Date.now()); }
+  function setPin(ms) { pinUntil = ms ? Date.now() + ms : 0; store('pin', pinUntil); lastInteraction = Date.now(); if (B) renderBar(); }
+  function closePinMenu() { var p = $('pinPop'); if (p) p.parentNode.removeChild(p); }
+  ACT.pin = function (el) {
+    if (pinLeft() > 0) { setPin(0); toast('Unpinned.'); return; }
+    closePinMenu();
+    var r = el.getBoundingClientRect(), d = document.createElement('div');
+    d.id = 'pinPop'; d.setAttribute('data-act', 'pinclose');
+    d.innerHTML = '<div class="pm" data-act="noop" style="right:' + Math.max(8, window.innerWidth - r.right - 60) + 'px;bottom:' + (window.innerHeight - r.top + 10) + 'px">' +
+      '<h4>Keep this view on screen</h4><p>Stops ' + (S.idleMode === 'rotate' ? 'rotating and ' : '') + 'going back to Home, then picks back up.</p><div class="ch">' +
+      [[15, '15 min'], [30, '30 min'], [60, '1 hr'], [120, '2 hr']].map(function (o) { return '<button data-act="pinset" data-m="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
+    document.body.appendChild(d);
+  };
+  ACT.pinset = function (el) { var m = +attr(el, 'm'); closePinMenu(); setPin(m * 60000); toast('Pinned for ' + (m < 60 ? m + ' min' : (m / 60) + ' hr') + '.'); };
+  ACT.pinclose = closePinMenu;
 
   // ---------- Calendars ----------
   PANES.cals = function () {
-    var html = '<h2>Calendars</h2><p class="lead">Choose which calendars show on the board. Each one gets its own marker shape.</p><h3>Google</h3>';
+    var html = '<h2>Calendars</h2><p class="lead">Choose which calendars show on the board.</p><h3>Google</h3>';
     B.calendars.forEach(function (c) {
       if (c.type !== 'google') return;
       html += '<div class="srow">' + markerHTML(c.id) + '<div class="grow">' + esc(c.name) + (c.primary ? '<span class="tag">Main</span>' : '') +
@@ -1380,8 +1887,8 @@
     if (!ics.length) html += '<p class="lead">None yet.</p>';
     ics.forEach(function (c) {
       html += '<div class="srow">' + markerHTML(c.id) + '<div class="grow">' + esc(c.name) + '<span class="tag">' + (c.kind === 'icloud' ? 'iCloud' : c.kind === 'outlook' ? 'Outlook' : 'Link') + '</span>' +
-        '<small>View-only on the board</small></div>' + swHTML(c.show, 'icsshow', ' data-id="' + esc(c.id) + '"') +
-        '<button class="btn sm" data-act="icsdel" data-id="' + esc(c.id) + '">Remove</button></div>';
+        '<small>View-only on the board</small></div>' + '<button class="btn sm warn" data-act="icsdel" data-id="' + esc(c.id) + '">Remove</button>' +
+        swHTML(c.show, 'icsshow', ' data-id="' + esc(c.id) + '"') + '</div>';
     });
     var w = writableCals();
     html += '<h3>Default calendar for + Event</h3><select class="inp" style="max-width:420px" data-change="defcal">' +
@@ -1433,14 +1940,20 @@
           '<button class="btn pri" data-act="listrensave" data-id="' + esc(l.id) + '">Save</button><button class="btn" data-act="listrencancel">Cancel</button></div>';
         return;
       }
-      html += '<div class="srow">' + swHTML(l.show, 'listshow', ' data-id="' + esc(l.id) + '"') + '<div class="grow">' + esc(l.title) +
+      html += '<div class="srow"><div class="grow">' + esc(l.title) +
         '<small>' + (l.show ? 'Shown on the board' : 'Hidden') + '</small></div>' +
         '<button class="arrow" data-act="listmove" data-id="' + esc(l.id) + '" data-d="-1"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
         '<button class="arrow" data-act="listmove" data-id="' + esc(l.id) + '" data-d="1"' + (i === B.lists.length - 1 ? ' disabled' : '') + '>▼</button>' +
         '<button class="btn sm" data-act="listren" data-id="' + esc(l.id) + '">Rename</button>' +
-        '<button class="btn sm" data-act="listdel" data-id="' + esc(l.id) + '">Remove</button></div>';
+        '<button class="btn sm warn" data-act="listdel" data-id="' + esc(l.id) + '">Remove</button>' + swHTML(l.show, 'listshow', ' data-id="' + esc(l.id) + '"') + '</div>';
     });
-    html += '<p class="lead" style="margin-top:8px">The first shown list is the one on the Combination view. The Tasks view shows up to 4 lists.</p>';
+    html += '<p class="lead" style="margin-top:8px">Home shows the list you pick on its tile in Board views (or the first shown list).</p>';
+    var tl = S.todoLists || [];
+    html += '<h3>To-do view shows</h3><p class="lead">Pick up to 3 lists, in the order you tap them. With none picked, it shows the first 3 shown lists.</p>';
+    B.lists.forEach(function (l) {
+      var k = tl.indexOf(l.id);
+      html += '<div class="chk' + (k >= 0 ? ' on num' : '') + '" data-act="todopick" data-id="' + esc(l.id) + '"><span class="bx">' + (k >= 0 ? k + 1 : '') + '</span>' + esc(l.title) + '</div>';
+    });
     html += '<h3>Add a list</h3><div class="two" style="max-width:520px"><input class="inp" id="newList" placeholder="e.g. Groceries" maxlength="100" autocomplete="off">' +
       '<div style="-webkit-flex:none;flex:none"><button class="btn pri" data-act="listadd">Add list</button></div></div>';
     html += '<h3>Keep checked-off tasks visible for</h3>' + seg(S.keepDoneHours, 'keepdone', [[1, '1 hour'], [12, '12 hours'], [24, '24 hours'], [72, '3 days']]);
@@ -1484,6 +1997,11 @@
     $('newList').value = '';
     api('list.add', [title], function () { toast('List added.'); load(); }, function (e) { toast(e === 'offline' ? 'Could not add. Check Wi-Fi.' : e); });
   };
+  ACT.todopick = function (el) {
+    var id = attr(el, 'id'), a = (S.todoLists || []).filter(function (x) { return listById(x); }), i = a.indexOf(id);
+    if (i >= 0) a.splice(i, 1); else { if (a.length >= 3) { toast('Up to 3 lists. Untick one first.'); return; } a.push(id); }
+    saveSettings({ todoLists: a }); renderSettings();
+  };
   ACT.keepdone = function (el) { saveSettings({ keepDoneHours: +attr(el, 'v') }); renderSettings(); };
 
   // ---------- Personal + Family ----------
@@ -1515,10 +2033,14 @@
 
   // ---------- Countdowns ----------
   PANES.cds = function () {
-    var html = '<h2>Countdowns</h2><p class="lead">Turn on the events to count down to. Up to 3 show in the header, nearest first. ' +
+    var html = '<h2>Countdowns</h2><div class="lbl" style="margin-top:6px">Layout</div><div class="cdl-row">' + ['fib', 'halves', 'puzzle'].map(function (id) {
+      var L = CD_LAYOUTS[id];
+      return '<div class="cdl' + (S.cdLayout === id ? ' on' : '') + '" data-act="cdlayout" data-v="' + id + '">' + (S.cdLayout === id ? '<span class="badge">✓</span>' : '') + cdLayoutMini(id) + '<b>' + esc(L.name) + '</b><span>' + esc(L.desc) + '</span></div>';
+    }).join('') + '</div>';
+    html += '<p class="lead" style="margin-top:14px">Turn on the events to count down to. The nearest one shows in the header. ' +
       'Tip: put <b>#countdown</b> in an event’s title or notes on any phone and it turns on by itself (the board hides the tag).</p>';
     var live = liveCountdowns();
-    html += '<div class="lbl">Header preview</div><div style="margin:6px 0 4px">' + (live.length ? live.slice(0, 3).map(function (c) {
+    html += '<div class="lbl">In the header</div><div style="margin:6px 0 4px">' + (live.length ? live.slice(0, 1).map(function (c) {
       return '<span class="tag" style="font-size:15px;padding:3px 10px;border-radius:14px;text-transform:none;letter-spacing:0;margin:0 6px 6px 0;display:inline-block">' + esc(c.title) + ' · ' + cdLabel(c) + '</span>';
     }).join('') : '<span class="muted">No countdowns on yet.</span>') + '</div>';
     html += '<h3>Upcoming events (next 12 months)</h3>';
@@ -1527,13 +2049,14 @@
         function (e) { upcomingList = []; toast(e === 'offline' ? 'Could not load events. Check Wi-Fi.' : e); });
       return html + '<p class="lead">Loading events…</p>';
     }
-    if (!upcomingList.length) html += '<p class="lead">No upcoming events.</p>';
+    if (!upcomingList.length) html += '<p class="lead">Nothing planned in the next 12 months.</p>';
     upcomingList.forEach(function (u) {
       html += '<div class="srow"><div style="width:120px;-webkit-flex-shrink:0;flex-shrink:0;font-weight:700">' + shortDay(u.day) + '</div><div class="grow">' + esc(u.title) +
         (u.recurring ? '<small>Repeats — counts down to the next one</small>' : '') + '</div>' + swHTML(countdownOn(u.key), 'cdset', ' data-key="' + esc(u.key) + '"') + '</div>';
     });
     return html;
   };
+  ACT.cdlayout = function (el) { saveSettings({ cdLayout: attr(el, 'v') }); renderSettings(); };
   ACT.cdset = function (el) {
     var key = attr(el, 'key'), u = null, on = el.className.indexOf(' on') < 0;
     upcomingList.forEach(function (x) { if (x.key === key) u = x; });
@@ -1550,7 +2073,7 @@
 
   // ---------- Photos ----------
   PANES.photos = function () {
-    var html = '<h2>Photos</h2><p class="lead">Photos show while the board is asleep (tap <b>Sleep</b> in the bottom bar). ' +
+    var html = '<h2>Sleep &amp; photos</h2><p class="lead">Tap <b>Sleep</b> in the bottom bar to rest the board. With photos added, it shows them in a frame; without, a quiet clock. ' +
       'They’re stored on this iPad only, up to 20. To add some, first AirDrop them to the iPad, then tap Add photos.</p>';
     html += '<div><label for="filePick" class="btn pri">Add photos</label> <span class="muted" style="margin-left:10px">' + PHOTOS.length + ' of 20' +
       (PHOTOS.length >= 20 ? ' · new photos replace the oldest' : '') + '</span></div>';
@@ -1560,7 +2083,7 @@
     html += '<h3>Change photo every</h3>' + seg(S.photoMinutes, 'photomin', [[1, '1 min'], [2, '2 min'], [5, '5 min'], [10, '10 min']]);
     html += '<h3>Dot size</h3>' + seg(S.dotSize, 'dotsize', [['fine', 'Fine'], ['medium', 'Medium'], ['bold', 'Bold']]) +
       '<div class="dpreview"><canvas id="dotPrev"></canvas></div>';
-    html += '<h3>While asleep at night</h3>' + seg(S.sleepNight, 'sleepnight', [['dark', 'Go dark until sunrise'], ['photos', 'Keep showing photos']]);
+    html += '<h3>While asleep at night</h3>' + seg(S.sleepNight, 'sleepnight', [['dark', 'Nearly dark (dim clock)'], ['photos', 'Keep showing photos (dimmed)']]);
     return html;
   };
   ACT.photomin = function (el) { saveSettings({ photoMinutes: +attr(el, 'v') }); renderSettings(); };
@@ -1573,7 +2096,6 @@
   PANES.display = function () {
     var html = '<h2>Display</h2>';
     html += '<div class="fld" style="max-width:480px"><label>Board name</label><input class="inp" maxlength="40" value="' + esc(S.name) + '" data-change="bname" autocomplete="off"></div>';
-    html += '<h3>Go back to the home view after</h3>' + seg(S.homeMinutes, 'homemin', [[1, '1 min'], [3, '3 min'], [5, '5 min'], [10, '10 min']]);
     html += '<h3>Location (for weather, sunrise and sunset)</h3><p class="lead">Now: <b>' + esc(S.place || '') + '</b></p>' +
       '<div class="two" style="max-width:520px"><input class="inp" id="geoQ" placeholder="City or town" autocomplete="off">' +
       '<div style="-webkit-flex:none;flex:none"><button class="btn pri" data-act="geosearch">Search</button></div></div>';
@@ -1591,11 +2113,10 @@
       '<div style="-webkit-flex:none;flex:none"><button class="btn pri" data-act="pcset">Set</button></div></div>';
     html += '<h3>This iPad</h3><p class="lead">For the screen to stay on: iPad Settings → Display &amp; Brightness → Auto-Lock → Never, and ' +
       'Accessibility → Guided Access → Display Auto-Lock → Never.</p>' +
-      '<button class="btn" data-act="reloadapp">Reload the board</button> <button class="btn" data-act="disconnect">Disconnect this iPad</button>';
+      '<button class="btn" data-act="reloadapp">Reload the board</button> <button class="btn warn" data-act="disconnect">Disconnect this iPad</button>';
     return html;
   };
   CHG.bname = function (el) { saveSettings({ name: el.value.substr(0, 40) || 'InkBoard' }); };
-  ACT.homemin = function (el) { saveSettings({ homeMinutes: +attr(el, 'v') }); renderSettings(); };
   ACT.unit = function (el) { saveSettings({ unit: attr(el, 'v') }); renderSettings(); };
   ACT.geosearch = function () {
     var q = val('geoQ');
@@ -1614,7 +2135,7 @@
     saveSettings({ passcode: p }); renderSettings(); toast('Passcode set.');
   };
   ACT.pcoff = function () { saveSettings({ passcode: '' }); renderSettings(); };
-  ACT.reloadapp = function () { location.reload(); };
+  ACT.reloadapp = function () { freshReload(); };   // always fetches the newest index.html
   ACT.disconnect = function (el) {
     twice(el, 'Tap again to disconnect', function () {
       store('cfg', {}); store('board', null); CFG = {}; hideSettings(); showSetup('Disconnected.');
@@ -1810,46 +2331,44 @@
   }
 
   // ================================================================
-  //  SLEEP TO PHOTOS
+  //  SLEEP (tap Sleep in the bottom bar; wakes at sunrise or on touch)
+  //  Night: nearly dark (dim clock + tomorrow's weather), or your photos dimmed.
+  //  Day: your photos in a frame, or a quiet clock when there are none.
   // ================================================================
   var photoIdx = 0, photoTimer = null, sleepSince = 0, sleepMode = '';
-  function photoCorner() {
-    var t = timeParts(Date.now()), nx = nextEvent(shownCalIds());
-    return '<b>' + t.t + ' ' + t.a + '</b>' + (nx ? esc(nx.title) + ' · ' + (evDay(nx) === todayKey() ? '' : 'tomorrow ') + hm(nx.start) : esc(longDay(todayKey())));
-  }
-  function showPhotoIn(frame, withCorner) {
-    if (!PHOTOS.length) { frame.innerHTML = '<div class="hint" style="margin:40px">No photos yet. Add some in Settings → Photos.</div>'; frame.style.background = 'transparent'; return; }
-    var p = PHOTOS[photoIdx % PHOTOS.length];
-    frame.style.background = '#000';
-    frame.innerHTML = '<canvas></canvas>' + (withCorner ? '<div class="corner js-corner">' + photoCorner() + '</div>' : '');
-    drawDithered(frame.firstChild, p.data, frame.clientWidth || window.innerWidth, frame.clientHeight || window.innerHeight, S.dotSize);
-  }
+  function sleepWant() { return (isNight() && S.sleepNight === 'dark') ? 'dark' : (PHOTOS.length ? 'photos' : 'clock'); }
+  function sleepHead() { return '<div class="sl-h"><span class="nm">' + esc(S.name || 'InkBoard') + '</span>' + wxCompact(isNight() || isEvening()) + '</div>'; }
+  var SLP = '<div class="slp">SLEEPING<span> · touch to wake</span></div>';
   function drawSleep() {
-    var el = $('sleep');
-    var mode = (isNight() && S.sleepNight === 'dark') ? 'dark' : (PHOTOS.length ? 'photos' : 'clock');
+    var el = $('sleep'), mode = sleepWant(), night = isNight();
     sleepMode = mode;
-    el.className = mode === 'dark' ? 'dark' : '';
-    if (mode === 'dark') { el.innerHTML = ''; return; }
-    if (mode === 'clock') {
-      el.innerHTML = '<div class="nclock js-nclock">' + nightClockInner() + '</div><div class="addhint">Add photos in Settings → Photos. Touch to wake.</div>';
+    if (mode === 'photos') {
+      el.className = night ? 'nightsoft' : '';
+      el.innerHTML = sleepHead() + '<div class="sl-ph"><canvas></canvas></div><div class="sl-cap"><div class="t js-slt">' + timeBig() + '</div><div class="m">' + SLP + '</div><div class="d">' + longDay(todayKey()) + '</div></div>';
+      showPhoto();
       return;
     }
-    el.innerHTML = '<div class="pframe"></div>';
-    showPhotoIn(el.firstChild, true);
+    el.className = mode === 'dark' ? 'dim' : (night ? 'nightsoft' : '');
+    el.innerHTML = sleepHead() + '<div class="sl-c"><div class="t js-slt">' + timeBig() + '</div>' + (mode === 'dark' ? '' : '<div class="d">' + longDay(todayKey()) + '</div>') + '</div><div class="sl-f">' + SLP + '</div>';
+  }
+  function showPhoto() {
+    var fr = document.querySelector('#sleep .sl-ph');
+    if (!fr || !PHOTOS.length) return;
+    var p = PHOTOS[photoIdx % PHOTOS.length];
+    drawDithered(fr.firstChild, p.data, fr.clientWidth, fr.clientHeight, S.dotSize);
   }
   function startPhotoTimer() {
     clearInterval(photoTimer);
     photoTimer = setInterval(function () {
       photoIdx++;
-      if (sleeping && sleepMode === 'photos') showPhotoIn($('sleep').firstChild, true);
-      fillPhotoViews();
+      if (sleeping && sleepMode === 'photos') showPhoto();
     }, Math.max(1, S ? S.photoMinutes : 2) * 60000);
   }
   ACT.sleep = function () {
     if (!B) return;
     sleeping = true; sleepSince = Date.now();
     if (sheetOpen) closeSheet();
-    $('sleep').className = '';
+    closePinMenu();
     drawSleep();
     startPhotoTimer();
   };
@@ -1857,16 +2376,12 @@
     sleeping = false;
     $('sleep').className = 'hide'; $('sleep').innerHTML = '';
     lastInteraction = Date.now();
+    calOff = 0; monthOff = 0;
     goView(0);
     renderAll();
   }
   ACT.wake = wake;
-
-  function fillPhotoViews() {
-    var fs = document.querySelectorAll('.js-photoview');
-    for (var i = 0; i < fs.length; i++) showPhotoIn(fs[i], true);
-  }
-  afterRenderHooks.push(fillPhotoViews);
+  function fillPhotoViews() {}
 
   // ================================================================
   //  FIRST-TIME CONNECT SCREEN
@@ -1895,38 +2410,57 @@
   };
 
   // ================================================================
-  //  CLOCK: time, night mode, back to home, waking at sunrise, self-repair
+  //  CLOCK: time, night mode, going home / rotating, pin, waking at sunrise, self-repair
   // ================================================================
-  var lastMinute = -1, lastDay = todayKey();
+  var lastMinute = -1, lastDay = todayKey(), idleStart = 0, lastRotate = 0;
+  function autoView(i) { calOff = 0; monthOff = 0; goView(i); renderPages(); }
   function tick() {
-    var now = Date.now(), d = new Date(now);
+    var now = Date.now(), d = new Date(now), i;
     if (!B) return;
     renderTime();
-    var cs = document.querySelectorAll('.js-clock'), i;
-    for (i = 0; i < cs.length; i++) cs[i].innerHTML = clockInner();
-    var ns = document.querySelectorAll('.js-nclock');
-    for (i = 0; i < ns.length; i++) ns[i].innerHTML = nightClockInner();
-    var cn = document.querySelectorAll('.js-corner');
-    for (i = 0; i < cn.length; i++) cn[i].innerHTML = photoCorner();
+    var q = function (sel, fn) { var els = document.querySelectorAll(sel); for (i = 0; i < els.length; i++) els[i].innerHTML = fn(); };
+    q('.js-stime, .js-nt, .js-slt', timeBig);
+    q('.js-upnext', upNextHTML);
+    q('.js-later', laterPanel);
     applyBodyClass();
 
     if (todayKey() !== lastDay) { lastDay = todayKey(); renderAll(); load(); }
     else if (d.getMinutes() !== lastMinute) {
       lastMinute = d.getMinutes();
-      if (lastMinute % 5 === 0 && !sheetOpen && !(sw && sw.on)) renderPages();   // fade past events
+      renderBar();
+      if (curViewId() === 'nightclock') renderHeader();
+      if (lastMinute % 5 === 0 && !sheetOpen && !(sw && sw.on)) renderPages();   // fade past events, move the now line
     }
-    var idle = now - lastInteraction;
-    if (!sleeping && !sheetOpen && !settingsOpen && view !== 0 && idle > S.homeMinutes * 60000) goView(0);
+
+    // Pin ran out: start counting "untouched" time from now.
+    if (pinUntil && now >= pinUntil) { setPin(0); }
+    var idle = now - lastInteraction, pinned = pinLeft() > 0;
     if (sheetOpen && idle > 10 * 60000) closeSheet();
     if (settingsOpen && idle > 15 * 60000) hideSettings();
+    if (!pinned && !sleeping && !sheetOpen && !settingsOpen && !$('pinPop') && S.idleMode !== 'stay' && idle > S.homeMinutes * 60000) {
+      if (idleStart < lastInteraction) {           // just became idle: go to Home (and start rotating from there)
+        idleStart = now; lastRotate = now;
+        if (view !== 0 || calOff || monthOff) autoView(0);
+      } else if (S.idleMode === 'rotate' && nViews() > 1 && now - lastRotate >= S.rotateMinutes * 60000) {
+        lastRotate = now;
+        autoView((view + 1) % nViews());
+      }
+    }
 
     if (sleeping) {
       var st = sunTimes(todayKey());
       if (st.rise && sleepSince < st.rise && now >= st.rise) wake();        // wakes at sunrise
-      else {
-        var want = (isNight() && S.sleepNight === 'dark') ? 'dark' : (PHOTOS.length ? 'photos' : 'clock');
-        if (want !== sleepMode) drawSleep();
-      }
+      else if (sleepWant() !== sleepMode) drawSleep();
+      else if (lastMinute % 10 === 0 && d.getSeconds() < 10) drawSleep();   // keep the weather line fresh
+    }
+
+    // Auto-update: check GitHub for a newer index.html; reload into it once nobody is using the board.
+    if (now - lastUpdCheck > UPDATE_MS) checkForUpdate();
+    if (pendingUpdate && !sleeping && !sheetOpen && !settingsOpen && idle > 60000 &&
+        now - (+(store('updAt') || 0)) > 10 * 60000) {
+      store('updAt', now); store('reloadAt', now);
+      freshReload();
+      return;
     }
 
     // Self-repair: if Safari froze the page or data is very old, reload it.
@@ -1938,11 +2472,39 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && B) load(); });
 
   // ================================================================
+  //  AUTO-UPDATE
+  //  Every 5 minutes, ask GitHub Pages whether index.html has changed (a tiny HEAD request
+  //  that reads the file's ETag / Last-Modified stamp). When it has, reload into the new
+  //  version with a fresh ?v= in the address so Safari can't serve the old copy from cache.
+  //  Nothing to do on GitHub except upload the new index.html.
+  // ================================================================
+  var UPDATE_MS = 5 * 60000, lastUpdCheck = 0, pendingUpdate = null;
+  function freshReload() {
+    location.replace(location.pathname + '?v=' + Date.now() + location.hash);
+  }
+  function checkForUpdate() {
+    lastUpdCheck = Date.now();
+    if (IN_GAS || window.__MOCK_API || !/^https?:$/.test(location.protocol) || navigator.onLine === false) return;
+    var x = new XMLHttpRequest();
+    x.open('HEAD', location.pathname + '?check=' + Date.now(), true);
+    x.timeout = 20000;
+    x.onload = function () {
+      if (x.status !== 200) return;
+      var stamp = x.getResponseHeader('ETag') || x.getResponseHeader('Last-Modified') || '';
+      if (!stamp) return;
+      var seen = store('pageStamp');
+      store('pageStamp', stamp);
+      if (seen && stamp !== seen) pendingUpdate = stamp;   // first check just records the stamp
+    };
+    x.send();
+  }
+
+  // ================================================================
   //  START
   // ================================================================
   function start() {
     var cached = store('board');
-    if (cached && cached.settings) { B = cached; S = cached.settings; loadedAt = cached.updated || 0; renderAll(); }
+    if (cached && cached.settings) { B = cached; S = fixSettings(cached.settings); loadedAt = cached.updated || 0; renderAll(); }
     else renderBar();
     load();
     loadPhotos(function () { if (B) startPhotoTimer(); fillPhotoViews(); });
